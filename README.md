@@ -30,34 +30,6 @@ One-click core start/stop, rule/global/direct modes, system proxy & TUN, traffic
 
 ---
 
-## 技术栈
-
-| 项 | 值 |
-| --- | --- |
-| 框架 | `net8.0-windows10.0.22621.0`，WinUI 3 / Windows App SDK `1.7.260224002` |
-| MVVM | CommunityToolkit.Mvvm `8.4.2`（`LangVersion=preview`） |
-| 部署 | Unpackaged（`WindowsPackageType=None` + `WindowsAppSDKSelfContained=true`），必须显式指定 RID |
-| 语言 | C# / XAML；`SatelliteResourceLanguages=zh-Hans;zh-CN;en-US` |
-| 内核交互 | 进程双通道日志、Clash API、`sing-box check` 配置预校验 |
-
----
-
-## 目录结构
-
-```
-SingBoxWinUI/
-├─ App.xaml(.cs) / MainWindow.xaml(.cs)    # 应用入口与主窗口
-├─ Views/ ViewModels/                      # 六个页面及对应 VM
-├─ Services/                               # 内核进程、配置合成、订阅、规则集、备份、更新…
-├─ Helpers/ Models/                        # 格式化、窗口、对话框、模型
-├─ Assets/                                 # 图标
-├─ scripts/                                # 词条生成器、内存测量脚本
-├─ publish.ps1                             # 绿色版构建 + 脱敏 + 7z + SHA256 + 冒烟测试
-├─ Core/                                   # ❗运行时目录（已忽略，需自备 sing-box.exe）
-└─ rulesets/                               # ❗规则集 JSON（已忽略，需自备）
-```
-
----
 
 ## 快速开始（使用绿色版）
 
