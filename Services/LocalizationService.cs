@@ -283,6 +283,12 @@ public sealed class LocalizationService : ObservableObject
         ["KernelUpdateConfirm"] = ("将下载并替换 Core\\sing-box.exe，是否继续？", "Download and replace Core\\sing-box.exe. Continue?"),
         ["KernelAssetSize"] = ("下载大小", "Download size"),
         ["KernelValidateFailed"] = ("新内核预校验失败，已中止更新", "New core failed pre-validation; update aborted"),
+        ["PickerAllFiles"] = ("所有文件 (*.*)", "All files (*.*)"),
+        ["PickerOpenTitle"] = ("选择文件", "Select a file"),
+        ["PickerSaveTitle"] = ("保存文件", "Save file"),
+        ["PickerFailedTitle"] = ("文件对话框打开失败", "File dialog failed"),
+        ["ProfilesImportFailedTitle"] = ("导入失败", "Import failed"),
+        ["ProfilesMixinReload"] = ("重新读取文件", "Reload from disk"),
     };
 
     /// <summary>所有词条名，切语言时逐个通知。</summary>
@@ -333,6 +339,7 @@ public sealed class LocalizationService : ObservableObject
         "KernelCheckFailed", "KernelNotChecked", "KernelDownloading", "KernelInstalling", "KernelRestarting", "KernelUpdated",
         "KernelUpdateFailed", "KernelRolledBack", "KernelNoAsset", "KernelLightweightBlocked", "KernelUpdateHint", "KernelUpdateConfirmTitle",
         "KernelUpdateConfirm", "KernelAssetSize", "KernelValidateFailed",
+        "PickerAllFiles", "PickerOpenTitle", "PickerSaveTitle", "PickerFailedTitle", "ProfilesImportFailedTitle", "ProfilesMixinReload",
     ];
 
     private string _currentLanguage = ChineseLanguage;
@@ -589,6 +596,19 @@ public sealed class LocalizationService : ObservableObject
     public string KernelUpdateFailedText(string message) => IsEnglish
         ? $"Update failed: {message}"
         : $"更新失败：{message}";
+
+    // ==================== 文件选择器 / 导入 / Mixin ====================
+
+    /// <summary>按扩展名生成文件类型过滤器的显示名，如 ".json" → "JSON files (*.json)"。</summary>
+    public string PickerFilterLabel(string ext)
+    {
+        var tag = ext.TrimStart('.').ToUpperInvariant();
+        return IsEnglish ? $"{tag} files (*{ext})" : $"{tag} 文件 (*{ext})";
+    }
+
+    public string PickerFailedMessage(string reason) => IsEnglish
+        ? $"Could not open the file dialog ({reason})."
+        : $"无法打开文件对话框（{reason}）。";
 
     // ==================== 强类型词条 ====================
 
@@ -1389,4 +1409,22 @@ public sealed class LocalizationService : ObservableObject
 
     /// <summary>新内核预校验失败</summary>
     public string KernelValidateFailed => T(nameof(KernelValidateFailed));
+
+    /// <summary>所有文件 (*.*)</summary>
+    public string PickerAllFiles => T(nameof(PickerAllFiles));
+
+    /// <summary>选择文件</summary>
+    public string PickerOpenTitle => T(nameof(PickerOpenTitle));
+
+    /// <summary>保存文件</summary>
+    public string PickerSaveTitle => T(nameof(PickerSaveTitle));
+
+    /// <summary>文件对话框打开失败</summary>
+    public string PickerFailedTitle => T(nameof(PickerFailedTitle));
+
+    /// <summary>导入失败</summary>
+    public string ProfilesImportFailedTitle => T(nameof(ProfilesImportFailedTitle));
+
+    /// <summary>重新读取文件</summary>
+    public string ProfilesMixinReload => T(nameof(ProfilesMixinReload));
 }

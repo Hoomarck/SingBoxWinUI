@@ -271,17 +271,22 @@ public partial class ProfilesViewModel : ObservableObject
         StatusMessage = LocalizationService.Instance.Say($"已删除「{item.Name}」。", $"Deleted \"{item.Name}\"");
     }
 
-    public void ImportLocal(string path)
+    /// <returns>true 表示导入成功；失败时 StatusMessage 已是本地化的失败原因，供调用方弹窗展示。</returns>
+    public bool ImportLocal(string path)
     {
         try
         {
             var item = _profiles.ImportLocal(path);
             _main.AppendLog($"[订阅] 已导入本地配置：{item.Name}（{item.NodeCount} 个节点）");
             StatusMessage = LocalizationService.Instance.Say($"已导入「{item.Name}」，{item.NodeCount} 个节点。", $"Imported \"{item.Name}\" with {item.NodeCount} nodes.");
+            // 服务层往同一 ObservableCollection 里 Add，UI 立即刷新；这里再补一次通知兜住模板缓存
+            OnPropertyChanged(nameof(Profiles));
+            return true;
         }
         catch (Exception ex)
         {
             StatusMessage = LocalizationService.Instance.Say($"导入失败：{ex.Message}", $"Import failed: {ex.Message}");
+            return false;
         }
     }
 

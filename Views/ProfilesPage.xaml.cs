@@ -38,11 +38,37 @@ public sealed partial class ProfilesPage : Page
 
     private async void OnImportLocalClick(object sender, RoutedEventArgs e)
     {
-        var file = await FilePickerHelper.PickOpenFileAsync(".json");
-        if (file is not null)
+        var pick = await FilePickerHelper.PickOpenFileAsync(".json");
+        if (pick.Path is null)
         {
-            ViewModel.ImportLocal(file.Path);
+            // 用户取消才静默返回；对话框真失败时必须给明确提示，不能又是「点了没反应」
+            if (pick.Error is not null)
+            {
+                await ShowImportErrorAsync(pick.Error);
+            }
+
+            return;
         }
+
+        // ImportLocal 返回 false 时 StatusMessage 里已是本地化的失败原因
+        if (!ViewModel.ImportLocal(pick.Path))
+        {
+            await ShowImportErrorAsync(ViewModel.StatusMessage);
+        }
+    }
+
+    private async Task ShowImportErrorAsync(string message)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = LocalizationService.Instance.ProfilesImportFailedTitle,
+            Content = message,
+            CloseButtonText = LocalizationService.Instance.CommonOk,
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+        };
+
+        await _dialogs.ShowAsync(dialog);
     }
 
     private async void OnEnableClick(object sender, RoutedEventArgs e)
@@ -153,6 +179,13 @@ public sealed partial class ProfilesPage : Page
 
     private async void OnEditPostMixinClick(object sender, RoutedEventArgs e) => await EditMixinAsync(isPre: false);
 
+    /// <summary>每次都从磁盘实时读取；WinUI 3 的 TextBox 只认 \r\n，统一规范化避免多行被吞。</summary>
+    private static string ReadMixinContent(string path)
+    {
+        var content = MixinService.Read(path);
+        return content.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
+    }
+
     /// <summary>内置 JSON 编辑器：保存前校验语法，出错就在弹窗里标红并拒绝关闭。</summary>
     private async Task EditMixinAsync(bool isPre)
     {
@@ -164,22 +197,30 @@ public sealed partial class ProfilesPage : Page
         var path = MixinService.GetPath(SingBoxService.DefaultCoreDirectory, isPre);
         MixinService.EnsureFile(path);
 
+        // 属性必须先设齐（尤其是 AcceptsReturn），Text 不要在这里赋值：
+        // TextBoxView 模板尚未加载时注入多行文本会被单行缓冲区截断，界面只剩首行 "{"
         var editor = new TextBox
         {
-            Text = MixinService.Read(path),
             AcceptsReturn = true,
-            TextWrapping = TextWrapping.Wrap,
-            FontFamily = new FontFamily("Consolas"),
+            TextWrapping = TextWrapping.NoWrap,
+            FontFamily = new FontFamily("Consolas, Microsoft YaHei UI"),
             FontSize = 13,
-            Height = 340,
+            Height = 360,
+            MinWidth = 500,
+            IsSpellCheckEnabled = false,
         };
 
-        // WinUI 的滚动条是 ScrollViewer 附加属性，不是 TextBox 自己的
         ScrollViewer.SetVerticalScrollBarVisibility(editor, ScrollBarVisibility.Auto);
         ScrollViewer.SetHorizontalScrollBarVisibility(editor, ScrollBarVisibility.Auto);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             editor,
             isPre ? LocalizationService.Instance.ProfilesPreMixinJson : LocalizationService.Instance.ProfilesPostMixinJson);
+
+        // 每次刷新都实时回读磁盘，避免外部编辑器改完文件后被编辑框里的旧缓冲覆盖
+        void RefreshFromDisk() => editor.Text = ReadMixinContent(path);
+
+        // 模板加载完成后再注入完整多行文本；每次弹窗显示也强制回读一次
+        editor.Loaded += (_, _) => RefreshFromDisk();
 
         var error = new TextBlock
         {
@@ -194,11 +235,50 @@ public sealed partial class ProfilesPage : Page
             HorizontalAlignment = HorizontalAlignment.Left,
         };
 
+        var reload = new Button
+        {
+            Content = LocalizationService.Instance.ProfilesMixinReload,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+
+        openExternal.Click += async (_, _) =>
+        {
+            // 弹窗保持打开：外部编辑器退出后把磁盘最新内容灌回编辑框。
+            // 若关联程序是「交给已运行实例就退出」的类型，用户可点「重新读取文件」手动刷新。
+            try
+            {
+                var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                if (process is not null)
+                {
+                    try
+                    {
+                        await process.WaitForExitAsync();
+                    }
+                    catch (Exception)
+                    {
+                        // 进程不可等待时忽略，下面的回读仍然执行
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 没有关联程序等，忽略
+            }
+
+            RefreshFromDisk();
+        };
+
+        reload.Click += (_, _) => RefreshFromDisk();
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        actions.Children.Add(openExternal);
+        actions.Children.Add(reload);
+
         // 不写死宽度：交给 ContentDialog 撑开，错误提示才能正常换行
         var panel = new StackPanel { Spacing = 10 };
         panel.Children.Add(editor);
         panel.Children.Add(error);
-        panel.Children.Add(openExternal);
+        panel.Children.Add(actions);
 
         var dialog = new ContentDialog
         {
@@ -210,6 +290,8 @@ public sealed partial class ProfilesPage : Page
             XamlRoot = XamlRoot,
             MaxWidth = 760,
         };
+
+        dialog.Opened += (_, _) => RefreshFromDisk();
 
         dialog.PrimaryButtonClick += (_, args) =>
         {
@@ -225,20 +307,6 @@ public sealed partial class ProfilesPage : Page
                 error.Text = ex.Message;
                 error.Visibility = Visibility.Visible;
             }
-        };
-
-        openExternal.Click += (_, _) =>
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            }
-            catch (Exception)
-            {
-                // 没有关联程序等，忽略
-            }
-
-            dialog.Hide();
         };
 
         if (await _dialogs.ShowAsync(dialog) == ContentDialogResult.Primary)

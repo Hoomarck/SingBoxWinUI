@@ -346,6 +346,12 @@ TABLE = [
     ("KernelUpdateConfirm", "将下载并替换 Core\\sing-box.exe，是否继续？", "Download and replace Core\\sing-box.exe. Continue?"),
     ("KernelAssetSize", "下载大小", "Download size"),
     ("KernelValidateFailed", "新内核预校验失败，已中止更新", "New core failed pre-validation; update aborted"),
+    ("PickerAllFiles", "所有文件 (*.*)", "All files (*.*)"),
+    ("PickerOpenTitle", "选择文件", "Select a file"),
+    ("PickerSaveTitle", "保存文件", "Save file"),
+    ("PickerFailedTitle", "文件对话框打开失败", "File dialog failed"),
+    ("ProfilesImportFailedTitle", "导入失败", "Import failed"),
+    ("ProfilesMixinReload", "重新读取文件", "Reload from disk"),
 ]
 
 _seen_zh = set()

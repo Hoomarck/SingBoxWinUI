@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.IO;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using SingBoxWinUI.Services;
@@ -6,7 +7,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using SingBoxWinUI.Helpers;
 using SingBoxWinUI.ViewModels;
-using Windows.Storage;
 
 namespace SingBoxWinUI.Views;
 
@@ -75,22 +75,27 @@ public sealed partial class LogsPage : Page
             return;
         }
 
-        var file = await FilePickerHelper.PickSaveFileAsync(
+        var pick = await FilePickerHelper.PickSaveFileAsync(
             $"singbox-logs-{DateTime.Now:yyyyMMdd-HHmmss}.log",
             (Loc.Say("日志文件", "Log files"), ".log"),
             (Loc.Say("文本文件", "Text files"), ".txt"));
 
-        if (file is null)
+        if (pick.Path is null)
         {
+            if (pick.Error is not null)
+            {
+                ViewModel.StatusText = pick.Error;
+            }
+
             return;
         }
 
         try
         {
-            await FileIO.WriteTextAsync(file, ViewModel.BuildText());
+            await File.WriteAllTextAsync(pick.Path, ViewModel.BuildText());
             ViewModel.StatusText = Loc.Say(
-                $"已导出 {ViewModel.FilteredLogs.Count} 条日志到 {file.Name}",
-                $"Exported {ViewModel.FilteredLogs.Count} entries to {file.Name}");
+                $"已导出 {ViewModel.FilteredLogs.Count} 条日志到 {pick.Name}",
+                $"Exported {ViewModel.FilteredLogs.Count} entries to {pick.Name}");
         }
         catch (Exception ex)
         {

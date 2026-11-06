@@ -1,10 +1,10 @@
+using System.IO;
 using Microsoft.UI.Xaml;
 using SingBoxWinUI.Services;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using SingBoxWinUI.Helpers;
 using SingBoxWinUI.ViewModels;
-using Windows.Storage;
 
 namespace SingBoxWinUI.Views;
 
@@ -63,22 +63,27 @@ public sealed partial class SettingsPage : Page
 
     private async void OnExportBackupClick(object sender, RoutedEventArgs e)
     {
-        var file = await FilePickerHelper.PickSaveFileAsync(
+        var pick = await FilePickerHelper.PickSaveFileAsync(
             $"singbox-backup-{DateTime.Now:yyyyMMdd-HHmmss}.zip",
             (LocalizationService.Instance.SetBackupFileType, ".zip"));
 
-        if (file is null)
+        if (pick.Path is null)
         {
+            if (pick.Error is not null)
+            {
+                ViewModel.StatusMessage = pick.Error;
+            }
+
             return;
         }
 
         try
         {
             var data = App.Backup.CreateBackup();
-            await FileIO.WriteBytesAsync(file, data);
+            await File.WriteAllBytesAsync(pick.Path, data);
             ViewModel.StatusMessage = Loc.Say(
-                $"已导出备份 {file.Name}（{data.Length / 1024} KB）",
-                $"Backup exported to {file.Name} ({data.Length / 1024} KB)");
+                $"已导出备份 {pick.Name}（{data.Length / 1024} KB）",
+                $"Backup exported to {pick.Name} ({data.Length / 1024} KB)");
         }
         catch (Exception ex)
         {
@@ -88,9 +93,14 @@ public sealed partial class SettingsPage : Page
 
     private async void OnRestoreLocalClick(object sender, RoutedEventArgs e)
     {
-        var file = await FilePickerHelper.PickOpenFileAsync(".zip");
-        if (file is null)
+        var pick = await FilePickerHelper.PickOpenFileAsync(".zip");
+        if (pick.Path is null)
         {
+            if (pick.Error is not null)
+            {
+                ViewModel.StatusMessage = pick.Error;
+            }
+
             return;
         }
 
@@ -101,13 +111,13 @@ public sealed partial class SettingsPage : Page
 
         try
         {
-            await using var stream = await file.OpenStreamForReadAsync();
+            await using var stream = File.OpenRead(pick.Path);
             var count = App.Backup.Restore(stream);
             await App.ReloadAfterRestoreAsync();
             ViewModel.ReloadFromSettings();
             ViewModel.StatusMessage = Loc.Say(
-                $"已从 {file.Name} 恢复 {count} 个文件",
-                $"Restored {count} files from {file.Name}");
+                $"已从 {pick.Name} 恢复 {count} 个文件",
+                $"Restored {count} files from {pick.Name}");
         }
         catch (Exception ex)
         {
