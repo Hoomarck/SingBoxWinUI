@@ -44,7 +44,7 @@ One-click core start/stop, rule/global/direct modes, system proxy & TUN, traffic
 
 全部文件（含 `.sha256` 校验文件）在 [Releases v1.0.0](https://github.com/Hoomarck/SingBoxWinUI/releases/tag/v1.0.0) 下载。
 
-已上架 WinGet，命令行一键安装：
+已提交 WinGet 收录，审核通过后可用命令行一键安装：
 
 ```text
 winget install doubinanberwan.SingBoxWinUI
