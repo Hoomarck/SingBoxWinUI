@@ -69,45 +69,6 @@ SingBoxWinUI/
 
 > TUN 模式需要管理员权限，程序会在启用时自动请求 UAC 提权。
 
----
-
-## 构建与打包
-
-前置：Windows 10/11、.NET 8 SDK、Windows App SDK 1.7；建议安装 7-Zip 或 NanaZip（找不到时自动降级为 zip）。
-
-```powershell
-# 仅构建（框架依赖调试产物，不能直接当绿色版用）
-dotnet build -c Release -r win-x64
-
-# 生成脱敏绿色便携包 -> dist\SingBoxRunner-win-x64-portable.7z (+ .sha256)
-powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1 -Version 1.0.0
-```
-
-`publish.ps1` 流程：`dotnet publish` 自包含 → 语言资源与调试件瘦身 → **私人数据脱敏** → 写入干净默认配置与空 Mixin 模板 → 规则集筛选 → `sing-box check` 校验 → 7z 极限压缩 + SHA256 → 解压冒烟测试。
-
-| 参数 | 说明 |
-| --- | --- |
-| `-Version` | 发行版本号（保留参数；归档名固定为 `SingBoxRunner-<RID>-portable.7z`） |
-| `-Configuration` / `-Runtime` | 默认 `Release` / `win-x64` |
-| `-OnlyRequiredRuleSets` | 只打包默认配置引用的 `geosite_gfw.json` |
-| `-SkipPublish` | 复用 `publish\SingBoxRunner` 现有产物，跳过编译 |
-| `-SkipArchive` | 只做暂存与校验，不压缩 |
-| `-SkipSmokeTest` | 跳过会拉起 GUI 的解压冒烟测试（无人值守 / 后台构建时使用） |
-
-> 脱敏校验会强制移除 `app_settings.json`、`profiles.json`、`running_config.json`、`cache.db`、`Core\profiles\`；发行包内绝不含订阅信息。
-> ⚠️ 不要把 `bin\Release` 的产物直接当绿色版部署——那是框架依赖版本，需改用 `dotnet publish` 的自包含产物。
-
----
-
-## 隐私说明
-
-以下路径由 `.gitignore` 严格排除，不会出现在仓库或发行包中：
-
-- `Core/` 全部运行时文件（`config.json`、`running_config.json`、`app_settings.json`、`profiles.json`、`profiles/`、`cache.db`、`*.log`、`*.bak`、`sing-box.exe`）
-- `rulesets/*.json`、`rulesets/.pending/`
-- `bin/`、`obj/`、`publish/`、`dist/`、`artifacts/`
-- `.workbuddy*/`、`*.user`、`ui-*.png`、`verify-*.png`、`automationlog.txt`、`_*_test*.py`、`measure-*.txt`
-- 内部评审文档与本机部署脚本（含真实节点信息与本机绝对路径）
 
 ---
 
