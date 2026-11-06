@@ -5,7 +5,8 @@
 
 .DESCRIPTION
     流程：dotnet publish -> 组装干净暂存目录 -> 瘦身 -> 私人数据脱敏 -> 写入开箱即用默认配置
-          -> 用 sing-box check 校验默认配置 -> 压缩（7z 优先，降级 zip）-> 生成 SHA256 -> 打印清单。
+          -> 用 sing-box check 校验默认配置 -> 生成 with-core / no-core 双版本 .7z 便携包
+          -> 用 Inno Setup 编译 with-core / no-core 双版本安装向导 -> 逐个生成 SHA256。
 
     瘦身：
       * 附属资源只保留 zh-CN / zh-TW / en / en-US（其余 80+ 语言目录剔除）；
@@ -39,9 +40,12 @@ param(
     [string]$Version = "1.0.0",
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
+    # 未安装 Inno Setup 时可显式传 ISCC.exe 路径（例如便携解压出来的那份）
+    [string]$IsccPath = "",
     [switch]$OnlyRequiredRuleSets,
     [switch]$SkipPublish,
     [switch]$SkipArchive,
+    [switch]$SkipInstaller,
     [switch]$SkipSmokeTest
 )
 
@@ -77,6 +81,32 @@ function Resolve-DotNet {
 
 $dotnet = Resolve-DotNet
 
+# Inno Setup 命令行编译器。本机未提权时可以把它便携解压到临时目录，
+# 再用 -IsccPath 指过来，避免安装过程弹 UAC 抢焦点。
+function Resolve-Iscc {
+    if ($IsccPath) {
+        if (-not (Test-Path $IsccPath)) {
+            throw "-IsccPath 指向的 ISCC.exe 不存在：$IsccPath"
+        }
+        return (Resolve-Path $IsccPath).Path
+    }
+
+    $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source) { return $cmd.Source }
+
+    $candidates = @(
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        "C:\Program Files\Inno Setup 6\ISCC.exe",
+        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
+        (Join-Path $env:TEMP "sbw-inno\portable\ISCC.exe"),
+        (Join-Path $root "installer\.tools\ISCC.exe")
+    )
+    foreach ($path in $candidates) {
+        if ($path -and (Test-Path $path)) { return $path }
+    }
+    return $null
+}
+
 # ---------------------------------------------------------------- 路径
 
 $root        = $PSScriptRoot
@@ -86,7 +116,8 @@ $stagingName = "SingBoxRunner"
 $staging     = Join-Path $publishRoot $stagingName
 $distDir     = Join-Path $root "dist"
 $smokeRoot   = Join-Path $publishRoot "smoke_test"
-$archiveBase = "SingBoxRunner-$Runtime-portable"
+$archiveBase = "SingBoxWinUI-v$Version-$Runtime"
+$issScript   = Join-Path $root "installer\SingBoxWinUI.iss"
 
 # publish 直接落到 publish\SingBoxRunner，省掉"先发到 _publish 再复制"的一步
 $publishDir  = $staging
@@ -514,12 +545,12 @@ else {
 # ---------------------------------------------------------------- 6. 压缩
 
 if ($SkipArchive) {
-    Write-Step "7/7 已跳过压缩（-SkipArchive）"
+    Write-Step "7/8 已跳过压缩与安装包（-SkipArchive）"
     Write-Host "    暂存目录：$staging"
     exit 0
 }
 
-Write-Step "7/7 压缩归档"
+Write-Step "7/8 双版本便携包 + 双版本安装向导"
 
 function Find-SevenZip {
     $cmd = Get-Command 7z.exe -ErrorAction SilentlyContinue
@@ -538,50 +569,80 @@ function Find-SevenZip {
 }
 
 $sevenZip = Find-SevenZip
-$archivePath = $null
+if (-not $sevenZip) {
+    throw "未找到 7z.exe / NanaZip，无法生成 .7z 便携包。请先安装 7-Zip 或 NanaZip。"
+}
 
-if ($sevenZip) {
-    $archivePath = Join-Path $distDir "$archiveBase.7z"
-    Remove-BuildFile $archivePath
+# ---- 7a. 便携包：with-core 完整，no-core 排除内核 ----
 
-    Push-Location $publishRoot
-    try {
-        # -mx=9 极限压缩，-mfb=64 快速字节，-md=32m 字典，-ms=on 固实
-        & $sevenZip a -t7z -mx=9 -mfb=64 -md=32m -ms=on $archivePath $stagingName
-        $sevenExit = $LASTEXITCODE
-    }
-    finally {
-        Pop-Location
-    }
+$archiveWithCore = Join-Path $distDir "$archiveBase-with-core.7z"
+$archiveNoCore   = Join-Path $distDir "$archiveBase-no-core.7z"
 
-    if ($sevenExit -eq 0 -and (Test-Path $archivePath)) {
-        Write-Ok "7z 打包完成：$(Split-Path $sevenZip -Leaf)"
-    }
-    else {
-        Write-Warning "7z 打包失败（退出码 $sevenExit），降级为 zip"
-        $archivePath = $null
-    }
+Push-Location $publishRoot
+try {
+    Remove-BuildFile $archiveWithCore
+    # -mx=9 极限压缩，-mfb=64 快速字节，-md=32m 字典，-ms=on 固实
+    & $sevenZip a -t7z -mx=9 -mfb=64 -md=32m -ms=on $archiveWithCore $stagingName
+    if ($LASTEXITCODE -ne 0) { throw "7z 打包 with-core 失败（退出码 $LASTEXITCODE）" }
+    Write-Ok "with-core 便携包完成"
+
+    Remove-BuildFile $archiveNoCore
+    # 排除内核：no-core 版解压后 Core\ 里没有 sing-box.exe，由用户自备或沿用旧文件
+    & $sevenZip a -t7z -mx=9 -mfb=64 -md=32m -ms=on $archiveNoCore $stagingName "-xr!sing-box.exe"
+    if ($LASTEXITCODE -ne 0) { throw "7z 打包 no-core 失败（退出码 $LASTEXITCODE）" }
+    Write-Ok "no-core 便携包完成（已排除 Core\sing-box.exe）"
+}
+finally {
+    Pop-Location
+}
+
+# ---- 7b. 安装向导（Inno Setup，同一 .iss 两套编译宏）----
+
+$setupWithCore = Join-Path $distDir "SingBoxWinUI-Setup-v$Version-$Runtime-with-core.exe"
+$setupNoCore   = Join-Path $distDir "SingBoxWinUI-Setup-v$Version-$Runtime-no-core.exe"
+
+$iscc = Resolve-Iscc
+if ($SkipInstaller) {
+    Write-Skip "已跳过安装包编译（-SkipInstaller）"
+}
+elseif (-not $iscc) {
+    Write-Warning "未找到 ISCC.exe，跳过安装包编译。可安装 Inno Setup 或用 -IsccPath 指定。"
+}
+elseif (-not (Test-Path $issScript)) {
+    Write-Warning "找不到 installer\SingBoxWinUI.iss，跳过安装包编译。"
 }
 else {
-    Write-Skip "未找到 7z.exe，直接使用 zip"
+    foreach ($variant in @("with-core", "no-core")) {
+        $expected = if ($variant -eq "with-core") { $setupWithCore } else { $setupNoCore }
+        Remove-BuildFile $expected
+
+        # ISPP 的 /Dxxx=0 是字符串 token，数值判断会失效；
+        # 精简版改用 /DNoCore=1 这个「存在即生效」的开关。
+        $isppArgs = @("/DAppVersion=$Version", "/DSourceDir=$staging", "/DOutDir=$distDir")
+        if ($variant -eq "no-core") { $isppArgs = @("/DNoCore=1") + $isppArgs }
+
+        & $iscc @isppArgs $issScript
+        if ($LASTEXITCODE -ne 0) { throw "ISCC 编译 $variant 失败（退出码 $LASTEXITCODE）" }
+        if (-not (Test-Path $expected)) { throw "ISCC 未产出预期文件：$expected" }
+        Write-Ok "安装向导 $variant 完成"
+    }
 }
 
-if (-not $archivePath) {
-    $archivePath = Join-Path $distDir "$archiveBase.zip"
-    Remove-BuildFile $archivePath
+# ---- 7c. 逐文件 SHA256 ----
 
-    Compress-Archive -Path $staging -DestinationPath $archivePath -CompressionLevel Optimal -Force
-    Write-Ok "zip 打包完成（Compress-Archive / Optimal）"
+$artifacts = @($archiveWithCore, $archiveNoCore, $setupWithCore, $setupNoCore) |
+    Where-Object { Test-Path $_ } | ForEach-Object { Get-Item $_ }
+
+foreach ($item in $artifacts) {
+    $itemHash = (Get-FileHash -Path $item.FullName -Algorithm SHA256).Hash
+    $itemHashFile = "$($item.FullName).sha256"
+    "$itemHash  $($item.Name)" | Out-File -FilePath $itemHashFile -Encoding ASCII -NoNewline
+    Add-Content -Path $itemHashFile -Value "" -Encoding ASCII
+    Write-Ok "SHA256 -> $($item.Name).sha256"
 }
 
-# ---------------------------------------------------------------- 7. 校验值 + 清单
-
-$hash = (Get-FileHash -Path $archivePath -Algorithm SHA256).Hash
-$hashFile = "$archivePath.sha256"
-$archiveLeaf = Split-Path $archivePath -Leaf
-"$hash  $archiveLeaf" | Out-File -FilePath $hashFile -Encoding ASCII -NoNewline
-Add-Content -Path $hashFile -Value "" -Encoding ASCII
-Write-Ok "SHA256 -> $archiveLeaf.sha256"
+# 冒烟测试复用带内核的便携包
+$archivePath = $archiveWithCore
 
 # ---------------------------------------------------------------- 8. 冒烟测试
 #
@@ -711,37 +772,18 @@ else {
     Write-Ok "8d 冒烟测试通过，临时目录已清理"
 }
 
-$archiveItem = Get-Item $archivePath
-$sizeMb = [math]::Round($archiveItem.Length / 1MB, 2)
-
-Write-Host ""
-Write-Host "==================== 发行包 ====================" -ForegroundColor Cyan
-Write-Host ("归档文件 : {0}" -f $archiveItem.FullName)
-Write-Host ("体积     : {0} MB ({1:N0} 字节)" -f $sizeMb, $archiveItem.Length)
-Write-Host ("SHA256   : {0}" -f $hash)
-Write-Host ("校验文件 : {0}" -f $hashFile)
-Write-Host ("冒烟测试 : {0}" -f $smokeResult)
-
-$stagingFiles = Get-ChildItem -Path $staging -Recurse -File | Sort-Object FullName
+$stagingFiles = @(Get-ChildItem -Path $staging -Recurse -File)
 $stagingSize = ($stagingFiles | Measure-Object -Property Length -Sum).Sum
-Write-Host ("暂存目录 : {0}" -f $staging)
-Write-Host ("解压后   : {0} 个文件 / {1} MB" -f $stagingFiles.Count, [math]::Round($stagingSize / 1MB, 2))
-Write-Host ("瘦身节省 : {0} MB（语言资源 {1} MB + 调试件 {2} MB）" -f `
-    [math]::Round(($cultureBytes + $debugBytes) / 1MB, 2), `
-    [math]::Round($cultureBytes / 1MB, 2), `
-    [math]::Round($debugBytes / 1MB, 2))
+
 Write-Host ""
-Write-Host "---- 目录清单（相对 $stagingName）----" -ForegroundColor Cyan
-
-foreach ($file in $stagingFiles) {
-    $rel = $file.FullName.Substring($staging.Length + 1)
-    if ($file.Length -ge 1MB) {
-        Write-Host ("  {0,-62} {1,8:N1} MB" -f $rel, ($file.Length / 1MB))
-    }
-    else {
-        Write-Host ("  {0,-62} {1,8:N1} KB" -f $rel, ($file.Length / 1KB))
-    }
+Write-Host "==================== 发行产物 ====================" -ForegroundColor Cyan
+foreach ($item in $artifacts) {
+    $digest = ((Get-Content "$($item.FullName).sha256" -Raw).Trim() -split '\s+')[0]
+    Write-Host ("  {0,-58} {1,8:N2} MB  {2}" -f $item.Name, ($item.Length / 1MB), $digest)
 }
-
+Write-Host ("暂存目录 : {0}" -f $staging)
+Write-Host ("解压后   : {0} 个文件 / {1:N2} MB" -f $stagingFiles.Count, ($stagingSize / 1MB))
+Write-Host ("冒烟测试 : {0}" -f $smokeResult)
+Write-Host ("瘦身节省 : {0:N2} MB（语言资源 + 调试件）" -f (($cultureBytes + $debugBytes) / 1MB))
 Write-Host ""
 Write-Host "完成。" -ForegroundColor Green

@@ -31,11 +31,30 @@ One-click core start/stop, rule/global/direct modes, system proxy & TUN, traffic
 ---
 
 
+## 下载
+
+> 💡 **首次下载 / 小白用户**：请直接下载 **`SingBoxWinUI-Setup-v1.0.0-win-x64-with-core.exe`**（安装向导，内置 `sing-box` 核心与基础规则集，双击装完即用）。
+> - **老用户升级 / 已自备内核**：下载 `no-core` 版本，覆盖安装不会动你已有的配置。
+> - **喜欢免安装**：下载对应的 `.7z` 便携包，解压即用。
+
+| 版本 | 安装向导 | 免安装便携包 |
+| --- | --- | --- |
+| 带核心（推荐） | `SingBoxWinUI-Setup-v1.0.0-win-x64-with-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-with-core.7z` |
+| 不带核心 | `SingBoxWinUI-Setup-v1.0.0-win-x64-no-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-no-core.7z` |
+
+全部文件（含 `.sha256` 校验文件）在 [Releases v1.0.0](https://github.com/Hoomarck/SingBoxWinUI/releases/tag/v1.0.0) 下载。
+
+已上架 WinGet，命令行一键安装：
+
+```text
+winget install doubinanberwan.SingBoxWinUI
+```
+
 ## 快速开始（使用绿色版）
 
-1. 从 GitHub Releases 下载 `SingBoxRunner-win-x64-portable.7z`，用 `.sha256` 校验后解压到任意目录。
-2. 自备内核：把 `sing-box.exe` 放到 `SingBoxRunner\Core\`。
-3. 自备规则集：把 `geosite_gfw.json` 等 `.json` 放到 `SingBoxRunner\rulesets\`（默认配置引用 `geosite_gfw.json`）。
+1. 从 GitHub Releases 下载 `SingBoxWinUI-v1.0.0-win-x64-with-core.7z`，用 `.sha256` 校验后解压到任意目录。
+2. 自备内核：把 `sing-box.exe` 放到 `SingBoxRunner\Core\`（仅 `no-core` 版本需要）。
+3. 自备规则集：把 `geosite_gfw.json` 等 `.json` 放到 `SingBoxRunner\rulesets\`（仅 `no-core` 版本需要）。
 4. 运行 `SingBoxWinUI.exe`，在「订阅」页添加自己的订阅地址即可。
 5. 解压后 `Core\config.json` 是**无任何节点**的默认骨架；`app_settings.json` / `profiles.json` 会在首次启动时自动生成。
 

@@ -33,7 +33,13 @@ public sealed class AutoStartService
         return exitCode == 0;
     }
 
-    public bool IsRunKeyPresent()
+    /// <summary>
+    /// 同步检测系统自启项，供首次生成默认设置时对齐用。
+    /// 只读 HKCU Run 键（安装向导写入的正是它）；不跑 schtasks 子进程，
+    /// 否则首次启动会被几百毫秒的进程调用卡住。计划任务形态由
+    /// <see cref="IsEnabledAsync"/> 负责，启动后 UI 侧另有异步校准。
+    /// </summary>
+    public static bool IsEnabled()
     {
         try
         {
@@ -45,6 +51,8 @@ public sealed class AutoStartService
             return false;
         }
     }
+
+    public bool IsRunKeyPresent() => IsEnabled();
 
     public async Task<bool> IsEnabledAsync(CancellationToken ct = default) =>
         await IsTaskCreatedAsync(ct) || IsRunKeyPresent();

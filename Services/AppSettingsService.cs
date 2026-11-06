@@ -172,6 +172,12 @@ public sealed class AppSettingsService
             if (!File.Exists(_path))
             {
                 Current = new AppSettings();
+
+                // 安装向导勾选「开机自启」后，系统 Run 键已经存在。
+                // 首次生成默认设置时把 AutoStartApp 对齐过去，否则设置页显示「关」，
+                // 用户再点一次开关反而会把刚装好的自启项清掉。
+                Current.AutoStartApp = AutoStartService.IsEnabled();
+
                 Save();
                 return;
             }

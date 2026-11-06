@@ -25,3 +25,13 @@
   `PrintWindow(hwnd, hdcMem, PW_RENDERFULLCONTENT = 0x00000002)`
   从窗口合成表面抓离屏图像；窗口被完全遮挡也能正常截图。禁止任何整屏截屏。
 - **收尾**：验证进程立即退出；临时截图写系统临时目录并删除，不在项目根目录留残留文件。
+
+## 4. 大众向极简文档铁律（README.md 专用）
+
+**README 的读者是普通大众用户，不是开发者。**
+
+1. 只回答三个问题：**这是什么 / 去哪下载 / 怎么用**。语言简练直观，用大白话，不写教程以外的东西。
+2. **严禁**在 README 堆砌底层实现黑话：`LOH/GC`、`ConcurrentQueue`、`GOMEMLIMIT`、`WindowsPackageType`、WinAppSDK / RID、`RuntimeConfigBuilder`、`.pending` 原子更新、脱敏校验内部细节、`.gitignore` 排除列表、构建脚本参数表等。这类内容只放 `docs/`、`CLAUDE.md` 或项目 Memory（`docs/` 不进版本库）。
+3. **禁止覆盖用户精简版 README**：README 由用户在 GitHub 网页端维护。任何会话修改前必须先 `git pull --rebase origin main`，绝不回滚，绝不把旧的长篇技术版贴回去，绝不擅自删改用户已有段落。
+4. 后续修改 README 只允许在**保持用户现有精简结构**的前提下，补充必要的「双版本下载说明」与「WinGet 安装命令」；不得自行新增技术章节、展开特性矩阵、追加实现细节或重写措辞。
+5. 新增发行版本时，只更新下载表格 / 文件名 / 安装命令，其它段落保持不动。
