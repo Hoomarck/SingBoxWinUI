@@ -6,7 +6,6 @@
 
 **基于 Windows 11 Fluent Design 与云母（Mica）材质的原生轻量级 sing-box 客户端**
 
-装完就能用，界面是原生的，后台几乎不占内存。
 
 <br />
 
