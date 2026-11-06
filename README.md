@@ -41,20 +41,7 @@
       <br />
       <sub><b>订阅与 Mixin</b>　本地导入 · 远程订阅 · 前后置 Mixin 编辑器</sub>
     </td>
-    <td align="center" width="50%">
-      <img src="Assets/screenshots/proxies.png" width="420" alt="节点策略" />
-      <br />
-      <sub><b>节点策略</b>　分组切换 · 一键测速 · 延迟排序</sub>
-    </td>
-  </tr>
-  <tr valign="top">
-    <td align="center" colspan="2">
-      <img src="Assets/screenshots/settings.png" width="720" alt="设置" />
-      <br />
-      <sub><b>设置与维护</b>　中英实时切换 · 内核在线更新 · 规则集更新 · 轻量模式</sub>
-    </td>
-  </tr>
-</table>
+
 
 ---
 
