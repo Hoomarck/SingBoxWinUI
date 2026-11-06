@@ -61,7 +61,7 @@
 | 版本 | 适合谁 | 安装包（推荐） | 免安装便携包 |
 | :--- | :--- | :--- | :--- |
 | **with-core**<br>带核心完整版 | 第一次使用 | `SingBoxWinUI-Setup-v1.0.0-win-x64-with-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-with-core.7z` |
-| **no-core**<br>不带核心精简版 |`SingBoxWinUI-Setup-v1.0.0-win-x64-no-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-no-core.7z` |
+| **no-core**<br>不带核心精简版 | 仅更新 |`SingBoxWinUI-Setup-v1.0.0-win-x64-no-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-no-core.7z` |
 
 
 ### 命令行安装（WinGet）
