@@ -41,7 +41,8 @@
       <br />
       <sub><b>订阅与 Mixin</b>　本地导入 · 远程订阅 · 前后置 Mixin 编辑器</sub>
     </td>
-
+  </tr>
+</table>
 
 ---
 
