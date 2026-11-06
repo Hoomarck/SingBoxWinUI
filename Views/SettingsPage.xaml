@@ -1,0 +1,802 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="SingBoxWinUI.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:services="using:SingBoxWinUI.Services"
+    Background="Transparent"
+    mc:Ignorable="d">
+
+    <Grid Padding="24,8,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            Text="{x:Bind Loc.NavSettings, Mode=OneWay}"
+            Margin="0,0,0,12"
+            Style="{StaticResource SubtitleTextBlockStyle}" />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12">
+
+                <InfoBar
+                    IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}"
+                    IsClosable="False"
+                    Severity="Informational"
+                    Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+
+
+                <!-- 启动与后台 -->
+                <Border
+                    Padding="20,16"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="{x:Bind Loc.SetSectionStartup, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetAutoStartApp, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetAutoStartAppHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock
+                                    Text="{x:Bind ViewModel.AutoStartMode, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetAutoStartAppAdminHint, Mode=OneWay}"
+                                    Margin="0,2,0,0"
+                                    TextWrapping="Wrap"
+                                    MaxWidth="520"
+                                    HorizontalAlignment="Left"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                    Visibility="{x:Bind ViewModel.IsNotAdmin, Mode=OneWay}" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Top"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetAutoStartApp, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.AutoStartApp, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetSilentTray, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetSilentTrayHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetSilentTray, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.SilentStartToTray, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetAutoStartCore, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetAutoStartCoreHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetAutoStartCore, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.AutoStartCore, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetCloseToTray, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetCloseToTrayHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetCloseToTray, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.CloseToTray, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetLightweight, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetLightweightHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap"
+                                    MaxWidth="480"
+                                    HorizontalAlignment="Left" />
+                            </StackPanel>
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                VerticalAlignment="Center">
+                                <ComboBox
+                                    Width="110"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="{x:Bind Loc.SetLightweightDelayA11y, Mode=OneWay}"
+                                    ItemsSource="{x:Bind ViewModel.LightweightDelayOptions, Mode=OneWay}"
+                                    SelectedIndex="{x:Bind ViewModel.LightweightDelayIndex, Mode=TwoWay}">
+                                </ComboBox>
+                                <ToggleSwitch
+                                    MinWidth="0"
+                                    VerticalAlignment="Center"
+                                    OnContent=""
+                                    OffContent=""
+                                    AutomationProperties.Name="{x:Bind Loc.SetLightweight, Mode=OneWay}"
+                                    IsOn="{x:Bind ViewModel.EnableLightweightMode, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 通用与网络 -->
+                <Border
+                    Padding="20,16"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="{x:Bind Loc.SetSectionGeneral, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetLanguageLabel, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetLanguageHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="140"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="{x:Bind Loc.SetLanguageLabel, Mode=OneWay}"
+                                ItemsSource="{x:Bind ViewModel.LanguageOptions, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.LanguageIndex, Mode=TwoWay}">
+                                </ComboBox>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetAppearance, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetAppliesImmediately, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="140"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="{x:Bind Loc.SetAppearance, Mode=OneWay}"
+                                ItemsSource="{x:Bind ViewModel.ThemeOptions, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.AppThemeIndex, Mode=TwoWay}">
+                                </ComboBox>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetUnifiedDelay, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetUnifiedDelayHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetUnifiedDelay, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.UnifiedDelay, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetIpv6, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetIpv6Hint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetIpv6, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.EnableIpv6, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetAutoTestDelay, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetAutoTestDelayHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap"
+                                    MaxWidth="480"
+                                    HorizontalAlignment="Left" />
+                            </StackPanel>
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                VerticalAlignment="Center">
+                                <ComboBox
+                                    Width="110"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="{x:Bind Loc.SetAutoTestIntervalA11y, Mode=OneWay}"
+                                    ItemsSource="{x:Bind ViewModel.AutoTestIntervalOptions, Mode=OneWay}"
+                                    SelectedIndex="{x:Bind ViewModel.AutoTestDelayIntervalIndex, Mode=TwoWay}">
+                                </ComboBox>
+                                <ToggleSwitch
+                                    MinWidth="0"
+                                    VerticalAlignment="Center"
+                                    OnContent=""
+                                    OffContent=""
+                                    AutomationProperties.Name="{x:Bind Loc.SetAutoTestDelay, Mode=OneWay}"
+                                    IsOn="{x:Bind ViewModel.AutoTestDelay, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="{x:Bind Loc.SetSpeedTestUrl, Mode=OneWay}" />
+                            <TextBlock
+                                Text="{x:Bind Loc.SetSpeedTestUrlHint, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox
+                                    Grid.Column="0"
+                                    MaxWidth="420"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="{x:Bind Loc.SetSpeedTestUrl, Mode=OneWay}"
+                                    Text="{x:Bind ViewModel.SpeedTestUrl, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                <Button
+                                    Grid.Column="1"
+                                    Content="{x:Bind Loc.CommonRestoreDefault, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.ResetSpeedTestUrlCommand, Mode=OneWay}" />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 高级与目录 -->
+                <Border
+                    Padding="20,16"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="{x:Bind Loc.SetSectionAdvanced, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+                        <!-- sing-box 内核版本 / 检测与更新：与下方「打开目录」按钮右对齐 -->
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Spacing="2" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Loc.SingBoxVersion, Mode=OneWay}" />
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.KernelVersionText, Mode=OneWay}"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Text="{x:Bind ViewModel.KernelStatusText, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                                <Button
+                                    Content="{x:Bind Loc.KernelCheckUpdate, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.CheckKernelUpdateCommand, Mode=OneWay}"
+                                    IsEnabled="{x:Bind ViewModel.KernelButtonsEnabled, Mode=OneWay}" />
+                                <Button
+                                    Content="{x:Bind Loc.KernelUpdateNow, Mode=OneWay}"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="OnUpdateKernelClick"
+                                    Visibility="{x:Bind ViewModel.ShowKernelUpdate, Mode=OneWay}" />
+                                <HyperlinkButton
+                                    Content="{x:Bind Loc.KernelChangelog, Mode=OneWay}"
+                                    NavigateUri="{x:Bind ViewModel.KernelReleaseUri, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.ShowKernelChangelog, Mode=OneWay}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 仅在下载/换核时展开；平时 Collapsed -->
+                        <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.KernelProgressVisibility, Mode=OneWay}">
+                            <ProgressBar
+                                Minimum="0"
+                                Maximum="100"
+                                Value="{x:Bind ViewModel.KernelProgress, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.KernelDownloading, Mode=OneWay}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.KernelProgressText, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetCoreDirectory, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetCoreDirectoryHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Content="{x:Bind Loc.SetOpenDirectory, Mode=OneWay}"
+                                Command="{x:Bind ViewModel.OpenCoreFolderCommand, Mode=OneWay}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 规则集管理与更新 -->
+                <Border
+                    Padding="20,16"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="{x:Bind Loc.SetRuleSets, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel
+                                Grid.Column="0"
+                                Orientation="Horizontal"
+                                Spacing="10"
+                                VerticalAlignment="Center">
+                                <TextBlock
+                                    Text="{x:Bind RuleSets.SummaryText, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    VerticalAlignment="Center" />
+                                <ProgressRing
+                                    Width="16"
+                                    Height="16"
+                                    IsActive="{x:Bind RuleSets.IsUpdating, Mode=OneWay}"
+                                    Visibility="{x:Bind RuleSets.IsUpdating, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind RuleSets.ProgressText, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="10"
+                                VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Loc.SetRuleSetsAutoUpdate, Mode=OneWay}" VerticalAlignment="Center" />
+                                <ToggleSwitch
+                                    MinWidth="0"
+                                    VerticalAlignment="Center"
+                                    OnContent=""
+                                    OffContent=""
+                                    AutomationProperties.Name="{x:Bind Loc.SetRuleSetsAutoUpdateA11y, Mode=OneWay}"
+                                    IsOn="{x:Bind RuleSets.AutoUpdate, Mode=TwoWay}" />
+                                <Button
+                                    Content="{x:Bind Loc.SetRuleSetsUpdateAll, Mode=OneWay}"
+                                    AutomationProperties.Name="{x:Bind Loc.SetRuleSetsUpdateAllA11y, Mode=OneWay}"
+                                    IsEnabled="{x:Bind RuleSets.CanUpdate, Mode=OneWay}"
+                                    Command="{x:Bind RuleSets.UpdateAllCommand, Mode=OneWay}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                PlaceholderText="{x:Bind Loc.SetRuleSetsUrlPlaceholder, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetRuleSetsUrl, Mode=OneWay}"
+                                Text="{x:Bind RuleSets.BaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Button
+                                Grid.Column="1"
+                                Content="{x:Bind Loc.CommonRestoreDefault, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetRuleSetsUrlReset, Mode=OneWay}"
+                                Command="{x:Bind RuleSets.ResetBaseUrlCommand, Mode=OneWay}" />
+                        </Grid>
+
+                        <Expander Header="{x:Bind Loc.SetRuleSetsList, Mode=OneWay}" HorizontalAlignment="Stretch" >
+                            <ItemsControl ItemsSource="{x:Bind RuleSets.Items, Mode=OneWay}" Margin="0,4,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="services:RuleSetFileInfo">
+                                        <Grid Padding="0,4" ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="150" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock
+                                                Grid.Column="0"
+                                                Text="{x:Bind FileName}"
+                                                FontFamily="Consolas"
+                                                FontSize="12"
+                                                TextTrimming="CharacterEllipsis"
+                                                VerticalAlignment="Center" />
+
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                Text="{x:Bind SizeText}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                VerticalAlignment="Center" />
+
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Text="{x:Bind ModifiedText}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                VerticalAlignment="Center" />
+
+                                            <TextBlock
+                                                Grid.Column="3"
+                                                Text="{x:Bind StatusText, Mode=OneWay}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                TextTrimming="CharacterEllipsis"
+                                                VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </StackPanel>
+                </Border>
+
+                <!-- TUN 虚拟网卡设置 -->
+                <Border
+                    Padding="20,16"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="{x:Bind Loc.SetSectionTun, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetTunInterface, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetTunInterfaceHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <TextBox
+                                Grid.Column="1"
+                                Width="200"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="{x:Bind Loc.SetTunInterfaceA11y, Mode=OneWay}"
+                                Text="{x:Bind ViewModel.TunInterfaceName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetTunStack, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetTunStackHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap"
+                                    MaxWidth="480"
+                                    HorizontalAlignment="Left" />
+                            </StackPanel>
+                            <ComboBox
+                                Grid.Column="1"
+                                MinWidth="140"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="{x:Bind Loc.SetTunStackA11y, Mode=OneWay}"
+                                SelectedIndex="{x:Bind ViewModel.TunStackIndex, Mode=TwoWay}">
+                                <ComboBoxItem Content="system" />
+                                <ComboBoxItem Content="gvisor" />
+                                <ComboBoxItem Content="mixed" />
+                            </ComboBox>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="MTU" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetTunMtuHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <NumberBox
+                                Grid.Column="1"
+                                Width="160"
+                                VerticalAlignment="Center"
+                                Minimum="576"
+                                Maximum="65535"
+                                SmallChange="100"
+                                SpinButtonPlacementMode="Compact"
+                                AutomationProperties.Name="TUN MTU"
+                                Value="{x:Bind ViewModel.TunMtu, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetTunAutoRoute, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetTunAutoRouteHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetTunAutoRouteA11y, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.TunAutoRoute, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetTunStrictRoute, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetTunStrictRouteHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetTunStrictRouteA11y, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.TunStrictRoute, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Text="{x:Bind Loc.SetTunApplyHint, Mode=OneWay}"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Button
+                                Grid.Column="1"
+                                Content="{x:Bind Loc.SetTunApply, Mode=OneWay}"
+                                Command="{x:Bind ViewModel.ApplyTunCommand, Mode=OneWay}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 备份与恢复 -->
+                <Border
+                    Padding="20,16"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="{x:Bind Loc.SetSectionBackup, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
+                        <TextBlock
+                            Text="{x:Bind Loc.SetBackupHint, Mode=OneWay}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            MaxWidth="520"
+                            HorizontalAlignment="Left" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button
+                                Content="{x:Bind Loc.SetExportBackup, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetExportBackup, Mode=OneWay}"
+                                Click="OnExportBackupClick" />
+                            <Button
+                                Content="{x:Bind Loc.SetRestoreLocal, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetRestoreLocal, Mode=OneWay}"
+                                Click="OnRestoreLocalClick" />
+                        </StackPanel>
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetAutoWebDav, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetAutoWebDavHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ToggleSwitch
+                                Grid.Column="1"
+                                MinWidth="0"
+                                VerticalAlignment="Center"
+                                OnContent=""
+                                OffContent=""
+                                AutomationProperties.Name="{x:Bind Loc.SetAutoWebDav, Mode=OneWay}"
+                                IsOn="{x:Bind ViewModel.AutoWebDavBackupOnStartup, Mode=TwoWay}" />
+                        </Grid>
+
+                        <TextBox
+                            PlaceholderText="{x:Bind Loc.SetWebDavUrlPlaceholder, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind Loc.SetWebDavUrl, Mode=OneWay}"
+                            Text="{x:Bind ViewModel.WebDavUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox
+                                Grid.Column="0"
+                                PlaceholderText="{x:Bind Loc.SetWebDavUser, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetWebDavUser, Mode=OneWay}"
+                                Text="{x:Bind ViewModel.WebDavUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <PasswordBox
+                                x:Name="WebDavPasswordBox"
+                                Grid.Column="1"
+                                PlaceholderText="{x:Bind Loc.SetWebDavPassword, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetWebDavPassword, Mode=OneWay}"
+                                PasswordChanged="OnWebDavPasswordChanged" />
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button
+                                Content="{x:Bind Loc.SetTestConnection, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetTestConnectionA11y, Mode=OneWay}"
+                                Click="OnTestWebDavClick" />
+                            <Button
+                                Content="{x:Bind Loc.SetWebDavBackupNow, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetWebDavBackupNow, Mode=OneWay}"
+                                Click="OnWebDavBackupClick" />
+                            <Button
+                                Content="{x:Bind Loc.SetRestoreWebDav, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.SetRestoreWebDav, Mode=OneWay}"
+                                Click="OnRestoreWebDavClick" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

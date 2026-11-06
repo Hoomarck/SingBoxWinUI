@@ -1,0 +1,16 @@
+# 代码分析规则调整
+# 目的：保留 .NET 推荐分析器（CAxxxx）的真实缺陷告警，
+# 只关掉与 WinUI 3 / MVVM 约定直接冲突的规则。
+
+[*.cs]
+
+# CA1822: "成员可以标记为 static"
+# WinUI 的 x:Bind 绑定源（页面上的 ViewModel / RuleSets 属性、HomePage 的
+# NotAdmin / IsMode 函数绑定）必须是实例成员；IsDue 也要作为方法组传给 Where。
+# 改成 static 会直接破坏绑定，因此整条规则关闭。
+dotnet_diagnostic.CA1822.severity = none
+
+# CA1001: "类型拥有可释放字段但不是 IDisposable"
+# ViewModel 是进程级单例，生命周期与 App 相同，统一由 MainWindow.OnClosed
+# 调 Dispose/Stop 收尾；MainWindow 自身是 Window，不能当 IDisposable 用。
+dotnet_diagnostic.CA1001.severity = none

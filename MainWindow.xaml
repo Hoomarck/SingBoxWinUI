@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="SingBoxWinUI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- Windows 11 Mica 云母材质 -->
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <!-- 紧凑型标准标题栏 -->
+            <RowDefinition Height="44" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 第 0 行：独立通栏标题栏，图标固定在 X=16 -->
+        <Grid
+            x:Name="AppTitleBar"
+            Grid.Row="0"
+            Padding="16,0,140,0"
+            Background="Transparent">
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center">
+                <Image
+                    x:Name="TitleBarIcon"
+                    Width="18"
+                    Height="18"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="{x:Bind Loc.HomeAppIcon, Mode=OneWay}" />
+                <TextBlock
+                    Text="Sing-box Runner"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                    VerticalAlignment="Center"
+                    Margin="10,0,0,0" />
+            </StackPanel>
+        </Grid>
+
+        <!-- 第 1 行：NavigationView，汉堡键与内容区圆角框同处这一行顶部 -->
+        <NavigationView
+            x:Name="NavView"
+            Grid.Row="1"
+            PaneDisplayMode="Left"
+            OpenPaneLength="180"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="True"
+            SelectionChanged="NavView_SelectionChanged"
+            Background="Transparent">
+
+            <!-- 侧栏透出 Mica，内容区保留 Layer 层级填充以显出左上圆角轮廓 -->
+            <NavigationView.Resources>
+                <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="Transparent" />
+                <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="Transparent" />
+            </NavigationView.Resources>
+
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="{x:Bind Loc.NavOverview, Mode=OneWay}" Tag="home">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Home" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="{x:Bind Loc.NavProxies, Mode=OneWay}" Tag="proxies">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Globe" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="{x:Bind Loc.NavConnections, Mode=OneWay}" Tag="connections">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Switch" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="{x:Bind Loc.NavLogs, Mode=OneWay}" Tag="logs">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Document" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="{x:Bind Loc.NavProfiles, Mode=OneWay}" Tag="profiles">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Library" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <!-- 侧栏底部：实时上下行 + 内核内存（自动位于「设置」上方） -->
+            <NavigationView.PaneFooter>
+                <Border
+                    x:Name="SpeedCard"
+                    Margin="12,4,12,4"
+                    Padding="12,10"
+                    CornerRadius="6"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Spacing="4">
+                        <Grid>
+                            <TextBlock
+                                Text="↑"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.UploadSpeedText, Mode=OneWay}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontFamily="Consolas"
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                        </Grid>
+
+                        <Grid>
+                            <TextBlock
+                                Text="↓"
+                                FontSize="12"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.DownloadSpeedText, Mode=OneWay}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontFamily="Consolas"
+                                FontSize="12"
+                                Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                        </Grid>
+
+                        <Grid>
+                            <TextBlock
+                                Text="{x:Bind Loc.SidebarMemory, Mode=OneWay}"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.MemoryUsageText, Mode=OneWay}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontFamily="Consolas"
+                                FontSize="11"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </NavigationView.PaneFooter>
+
+            <!-- 内容区：左上 8px 圆角 + 半透明层级填充，与汉堡键顶部齐平 -->
+            <Border
+                CornerRadius="8,0,0,0"
+                Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Frame x:Name="ContentFrame" Background="Transparent" />
+            </Border>
+        </NavigationView>
+    </Grid>
+</Window>

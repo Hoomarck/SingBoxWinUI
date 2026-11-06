@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="SingBoxWinUI.Views.ProxiesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:SingBoxWinUI.ViewModels"
+    Background="Transparent"
+    mc:Ignorable="d">
+
+    <Grid Padding="24,8,24,24">
+
+        <!-- 未运行空状态 -->
+        <StackPanel
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="10"
+            Visibility="{x:Bind ViewModel.IsNotRunning, Mode=OneWay}">
+            <FontIcon
+                Glyph="&#xE774;"
+                FontSize="32"
+                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+            <TextBlock
+                Text="{x:Bind Loc.ProxiesStartCoreFirst, Mode=OneWay}"
+                HorizontalAlignment="Center"
+                Style="{StaticResource BodyTextBlockStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
+
+        <!-- 运行中 -->
+        <Grid Visibility="{x:Bind ViewModel.IsRunning, Mode=OneWay}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- 工具栏 -->
+            <Grid Grid.Row="0" Margin="0,0,0,12">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock
+                        Text="{x:Bind Loc.NavProxies, Mode=OneWay}"
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                        VerticalAlignment="Center" />
+                    <TextBlock
+                        Text="{x:Bind Loc.ProxiesClickCardHint, Mode=OneWay}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        VerticalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center">
+                    <ProgressRing
+                        Width="16"
+                        Height="16"
+                        IsActive="{x:Bind ViewModel.IsRefreshing, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.IsRefreshing, Mode=OneWay}" />
+                    <Button
+                        Content="{x:Bind Loc.ProxiesRefresh, Mode=OneWay}"
+                        Command="{x:Bind ViewModel.RefreshCommand, Mode=OneWay}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- 策略组列表 -->
+            <ScrollViewer
+                Grid.Row="1"
+                VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{x:Bind ViewModel.ProxyGroups, Mode=OneWay}">
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProxyGroupItem">
+                            <Expander
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Margin="0,0,0,8"
+                                IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}">
+
+                                <Expander.Header>
+                                    <Grid ColumnSpacing="12" Padding="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel
+                                            Orientation="Horizontal"
+                                            Spacing="8"
+                                            VerticalAlignment="Center">
+                                            <TextBlock
+                                                Text="{x:Bind Name}"
+                                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                VerticalAlignment="Center" />
+
+                                            <Border
+                                                Padding="6,1"
+                                                CornerRadius="4"
+                                                VerticalAlignment="Center"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                <TextBlock
+                                                    Text="{x:Bind Type}"
+                                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </Border>
+
+                                            <TextBlock
+                                                Text="{x:Bind Now, Mode=OneWay}"
+                                                MaxWidth="240"
+                                                VerticalAlignment="Center"
+                                                TextTrimming="CharacterEllipsis"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+
+                                        <StackPanel
+                                            Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="8"
+                                            VerticalAlignment="Center">
+                                            <Button
+                                                Content="{x:Bind SortButtonText, Mode=OneWay}"
+                                                Tag="{x:Bind}"
+                                                Click="OnSortClick"
+                                                AutomationProperties.Name="{x:Bind SortButtonText, Mode=OneWay}" />
+
+                                            <Button
+                                                Click="OnTestGroupClick"
+                                                Tag="{x:Bind}"
+                                                IsEnabled="{x:Bind IsTestEnabled, Mode=OneWay}">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <ProgressRing
+                                                        Width="14"
+                                                        Height="14"
+                                                        IsActive="{x:Bind IsTesting, Mode=OneWay}"
+                                                        Visibility="{x:Bind IsTesting, Mode=OneWay}" />
+                                                    <TextBlock Text="{x:Bind TestButtonText, Mode=OneWay}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Expander.Header>
+
+                                <ItemsRepeater ItemsSource="{x:Bind Nodes}">
+                                    <ItemsRepeater.Layout>
+                                        <UniformGridLayout
+                                            MinItemWidth="190"
+                                            MinItemHeight="60"
+                                            MinRowSpacing="8"
+                                            MinColumnSpacing="8"
+                                            MaximumRowsOrColumns="4"
+                                            ItemsStretch="Fill" />
+                                    </ItemsRepeater.Layout>
+
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ProxyNodeItem">
+                                            <Button
+                                                Padding="0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Stretch"
+                                                VerticalContentAlignment="Stretch"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                CornerRadius="8"
+                                                Tag="{x:Bind}"
+                                                AutomationProperties.Name="{x:Bind Name}"
+                                                Click="OnNodeClick">
+                                                <Grid>
+                                                    <Border
+                                                        CornerRadius="8"
+                                                        BorderThickness="1"
+                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+
+                                                    <!-- 选中态高亮边框 -->
+                                                    <Border
+                                                        CornerRadius="8"
+                                                        BorderThickness="2"
+                                                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                                                        Visibility="{x:Bind IsSelected, Mode=OneWay}" />
+
+                                                    <Grid Padding="12,8" ColumnSpacing="8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <StackPanel
+                                                            Grid.Column="0"
+                                                            VerticalAlignment="Center"
+                                                            Spacing="2">
+                                                            <TextBlock
+                                                                Text="{x:Bind Name}"
+                                                                MaxLines="1"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                                Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                                            <TextBlock
+                                                                Text="{x:Bind Type}"
+                                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                        </StackPanel>
+
+                                                        <TextBlock
+                                                            Grid.Column="1"
+                                                            VerticalAlignment="Center"
+                                                            Text="{x:Bind DelayText, Mode=OneWay}"
+                                                            Foreground="{x:Bind DelayBrush, Mode=OneWay}"
+                                                            Style="{StaticResource CaptionTextBlockStyle}" />
+                                                    </Grid>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>

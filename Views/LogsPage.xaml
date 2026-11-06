@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="SingBoxWinUI.Views.LogsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:SingBoxWinUI.Models"
+    Background="Transparent"
+    mc:Ignorable="d">
+
+    <Grid Padding="24,8,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 顶部工具栏 -->
+        <Border
+            Grid.Row="0"
+            Padding="20,14"
+            CornerRadius="8"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            <StackPanel Spacing="10">
+
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox
+                        Grid.Column="0"
+                        PlaceholderText="{x:Bind Loc.LogsSearchPlaceholder, Mode=OneWay}"
+                        AutomationProperties.Name="{x:Bind Loc.LogsSearchA11y, Mode=OneWay}"
+                        Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <ComboBox
+                        Grid.Column="1"
+                        MinWidth="150"
+                        AutomationProperties.Name="{x:Bind Loc.LogsLevelA11y, Mode=OneWay}"
+                        ItemsSource="{x:Bind ViewModel.LevelOptions, Mode=OneWay}"
+                        SelectedIndex="{x:Bind ViewModel.LevelFilterIndex, Mode=TwoWay}">
+                                </ComboBox>
+
+                    <TextBlock
+                        Grid.Column="2"
+                        Text="{x:Bind ViewModel.CountText, Mode=OneWay}"
+                        VerticalAlignment="Center"
+                        Margin="4,0,0,0"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </Grid>
+
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextTrimming="CharacterEllipsis" />
+
+                    <StackPanel
+                        Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="8">
+                        <ToggleButton
+                            Content="{x:Bind Loc.LogsAutoScroll, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind Loc.LogsAutoScroll, Mode=OneWay}"
+                            IsChecked="{x:Bind ViewModel.AutoScroll, Mode=TwoWay}" />
+                        <Button
+                            Content="{x:Bind Loc.LogsCopy, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind Loc.LogsCopyAllA11y, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.CopyAllCommand, Mode=OneWay}" />
+                        <Button
+                            Content="{x:Bind Loc.LogsExport, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind Loc.LogsExportA11y, Mode=OneWay}"
+                            Click="OnExportClick" />
+                        <Button
+                            Content="{x:Bind Loc.LogsClear, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind Loc.LogsClearA11y, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- 日志列表 -->
+        <Border
+            Grid.Row="1"
+            Margin="0,12,0,0"
+            CornerRadius="8"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+
+            <Grid>
+                <TextBlock
+                    Text="{x:Bind Loc.LogsEmpty, Mode=OneWay}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource BodyTextBlockStyle}"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Visibility="{x:Bind ViewModel.HasNoLogs, Mode=OneWay}" />
+
+                <ListView
+                    x:Name="LogList"
+                    Padding="6,8,6,8"
+                    ItemsSource="{x:Bind ViewModel.FilteredLogs, Mode=OneWay}"
+                    SelectionMode="None"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="MinHeight" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:LogEntry">
+                            <Grid Padding="8,3" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="{x:Bind Timestamp}"
+                                    FontFamily="Consolas"
+                                    FontSize="12"
+                                    VerticalAlignment="Top"
+                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+                                <Border
+                                    Grid.Column="1"
+                                    MinWidth="54"
+                                    Padding="6,1"
+                                    CornerRadius="3"
+                                    VerticalAlignment="Top"
+                                    BorderThickness="1"
+                                    BorderBrush="{x:Bind LevelBrush}"
+                                    Background="{x:Bind BadgeBackground}">
+                                    <TextBlock
+                                        Text="{x:Bind LevelText}"
+                                        FontFamily="Consolas"
+                                        FontSize="10"
+                                        HorizontalAlignment="Center"
+                                        Foreground="{x:Bind LevelBrush}" />
+                                </Border>
+
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Text="{x:Bind Message}"
+                                    FontFamily="Consolas"
+                                    FontSize="12"
+                                    TextWrapping="Wrap"
+                                    IsTextSelectionEnabled="True"
+                                    Foreground="{x:Bind MessageBrush}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

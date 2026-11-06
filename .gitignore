@@ -1,0 +1,68 @@
+# ==========================================================================
+# SingBoxWinUI — 版本库忽略规则
+# 第一铁律：Core\ 内存放真实订阅节点、订阅 URL、WebDAV 凭据与内核二进制，
+#           任何运行时文件都不得进入 Git 索引。
+# ==========================================================================
+
+# --- 1. 内核与私人运行时数据（最高优先级）---------------------------------
+# 整目录封禁；下面逐项显式列出，防止将来放宽目录规则时漏网。
+Core/
+Core/config.json
+Core/running_config.json
+Core/app_settings.json
+Core/profiles.json
+Core/profiles/
+Core/cache.db
+Core/cache.db-shm
+Core/cache.db-wal
+Core/*.log
+Core/*.bak
+Core/sing-box.exe
+
+# --- 2. 规则集（体积大、可从上游重新获取）---------------------------------
+rulesets/*.json
+rulesets/.pending/
+rulesets/.pending/**
+_rulesets_backup/
+
+# --- 3. 构建与发布产物 ------------------------------------------------------
+bin/
+obj/
+publish/
+dist/
+artifacts/
+*.pdb
+*.zip
+*.7z
+
+# --- 4. 本地开发 / AI 工作区数据 -------------------------------------------
+.workbuddy/
+.workbuddy-ai/
+.vs/
+.cache/
+*.user
+
+# --- 5. 迭代期截图、临时脚本、日志 ------------------------------------------
+docs/screenshots/
+ui-*.png
+verify-*.png
+_*_test*.py
+measure-*.txt
+measure-*.log
+*.log
+/.*.log
+/.*.py
+/.gen.py
+automationlog.txt
+@AutomationLog.txt
+[Aa]utomation[Ll]og.txt
+
+# --- 6. 仅本机使用的内部资料（含真实节点 IP / UUID / 本机绝对路径）----------
+# docs/ 下的评审与配置对比报告引用了真实订阅节点服务器地址与凭据，禁止公开。
+docs/
+# deploy-fix.ps1 硬编码本机绿色版绝对路径，且会重启本机 App，仅本机使用。
+deploy-fix.ps1
+
+# --- 7. 系统杂物 ------------------------------------------------------------
+Thumbs.db
+Desktop.ini

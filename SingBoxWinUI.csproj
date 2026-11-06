@@ -1,0 +1,78 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>SingBoxWinUI</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 应用图标：同时用于 exe、任务栏、Alt+Tab -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <!-- 未指定 RID 时默认 x64：WinAppSDK 自包含模式必须有 RID -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+
+    <UseWinUI>true</UseWinUI>
+    <!-- 仅为了 VS 设计器；Unpackaged 部署下不参与打包 -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+
+    <!-- 非打包（Unpackaged）部署 -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- 必须用 preview：CommunityToolkit.Mvvm 的 [ObservableProperty] partial 属性
+         带初始值时（public partial string X { get; set; } = "..."）依赖 preview 语义，
+         锁到 13.0 会报 CS8050。等 toolkit 与 SDK 都稳定后再收紧。 -->
+    <LangVersion>preview</LangVersion>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!-- 只保留中文/英文的附属资源（WinUI 与 .NET 的 xx-XX\*.mui 目录）。
+         不指定时会带 80+ 个语言目录、约 150 个 mui 文件；界面语言只有中文，
+         其它语言除了占体积没有意义。publish.ps1 里还有一道兜底剪裁。 -->
+    <SatelliteResourceLanguages>zh-Hans;zh-CN;en-US</SatelliteResourceLanguages>
+
+    <!-- 轻量模式内存策略：
+         ServerGarbageCollection=false —— 桌面单进程用工作站 GC，Server GC 会为每个核心
+         保留独立的堆段与 GC 线程，空闲时也占着几十 MB 提交内存；
+         RetainVMGarbageCollection=false —— 回收后允许运行时把空出来的虚拟内存段还给系统，
+         否则 GC 会"囤着"这些段等下次复用，工作集数字永远压不下去。 -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
+  </PropertyGroup>
+
+  <!-- 运行时也要用到：AppWindow.SetIcon 与标题栏图标 -->
+  <ItemGroup>
+    <Content Include="Assets\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\app-64.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.260224002" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <!-- Core\ 里的内核与配置跟随输出目录（不参与版本库，见 .gitignore）。
+       运行期生成的两个文件排除在复制清单外，避免 clean 时被当作构建产物删掉。 -->
+  <ItemGroup>
+    <None Remove="Core\**" />
+    <Content Include="Core\**"
+             Exclude="Core\app_settings.json;Core\running_config.json"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- 规则集与 Core 平级：配置里 ../rulesets/xxx.json 相对工作目录（Core）解析 -->
+  <ItemGroup>
+    <None Remove="rulesets\**" />
+    <Content Include="rulesets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
