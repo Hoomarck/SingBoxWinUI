@@ -12,7 +12,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/Hoomarck/SingBoxWinUI?style=flat-square&label=release&color=238636)](https://github.com/Hoomarck/SingBoxWinUI/releases/latest)
 [![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D6?style=flat-square&logo=windows&logoColor=white)](#-下载与安装)
 [![.NET 8 / WinUI 3](https://img.shields.io/badge/.NET%208-WinUI%203-512BD4?style=flat-square&logo=dotnet&logoColor=white)](#)
-[![License](https://img.shields.io/badge/License-Proprietary-6e7681?style=flat-square)](#-声明)
+[![License](https://img.shields.io/badge/License-MIT-238636?style=flat-square)](LICENSE)
 
 <br />
 
