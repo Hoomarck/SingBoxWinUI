@@ -60,7 +60,7 @@
 
 | 版本 | 适合谁 | 安装包（推荐） | 免安装便携包 |
 | :--- | :--- | :--- | :--- |
-| **with-core**<br>带核心完整版 | 第一次使用 | `SingBoxWinUI-Setup-v1.0.0-win-x64-with-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-with-core.7z` |
+| **with-core**<br>带核心完整版 | 首次使用 | `SingBoxWinUI-Setup-v1.0.0-win-x64-with-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-with-core.7z` |
 | **no-core**<br>不带核心精简版 | 仅更新 |`SingBoxWinUI-Setup-v1.0.0-win-x64-no-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-no-core.7z` |
 
 
@@ -74,7 +74,7 @@ winget install doubinanberwan.SingBoxWinUI
 
 ## 🚀 三步快速上手
 
-1. **安装并运行**　双击安装包完成安装（建议保留「创建桌面快捷方式」），然后打开 **SingBoxWinUI**。
+1. **安装并运行**　双击安装包完成安装，然后打开 **SingBoxWinUI**。
 2. **导入订阅**　进入「订阅」页，把订阅链接粘进输入框点「导入远程」，或点「导入本地文件」选择本地的配置 / 订阅文件。
 3. **打开开关**　回到「概览」页，打开右上角的开关；需要全局接管就再打开「系统代理」或「TUN 模式」。
 
