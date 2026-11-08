@@ -21,6 +21,9 @@ public sealed class AppSettings
     /// <summary>点关闭按钮时隐藏到托盘而不是退出。</summary>
     public bool CloseToTray { get; set; } = true;
 
+    /// <summary>启动应用 10 秒后自动检查客户端新版本（后台轻量模式下不触发）。</summary>
+    public bool AutoCheckAppUpdate { get; set; } = true;
+
     /// <summary>界面语言：zh-CN / en-US。</summary>
     public string Language { get; set; } = LocalizationService.ChineseLanguage;
 

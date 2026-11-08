@@ -289,6 +289,17 @@ public sealed class LocalizationService : ObservableObject
         ["PickerFailedTitle"] = ("文件对话框打开失败", "File dialog failed"),
         ["ProfilesImportFailedTitle"] = ("导入失败", "Import failed"),
         ["ProfilesMixinReload"] = ("重新读取文件", "Reload from disk"),
+        ["AboutCardTitle"] = ("关于", "About"),
+        ["AboutGitHub"] = ("GitHub 主页", "GitHub"),
+        ["AboutCheckUpdate"] = ("检查更新", "Check for updates"),
+        ["AboutChecking"] = ("正在检查更新…", "Checking for updates…"),
+        ["AboutDownload"] = ("前往下载", "Download"),
+        ["AboutAutoCheck"] = ("自动检查更新", "Automatically check for updates"),
+        ["AboutAutoCheckHint"] = ("启动应用时自动检测客户端新版本", "Automatically check for new client releases on startup"),
+        ["AboutNotChecked"] = ("尚未检查更新", "Not checked yet"),
+        ["AboutUpToDate"] = ("已是最新版本", "Up to date"),
+        ["AboutCheckFailed"] = ("检查更新失败", "Update check failed"),
+        ["AboutLightweightBlocked"] = ("后台轻量模式下不自动检查更新", "No automatic update check in lightweight mode"),
     };
 
     /// <summary>所有词条名，切语言时逐个通知。</summary>
@@ -340,6 +351,7 @@ public sealed class LocalizationService : ObservableObject
         "KernelUpdateFailed", "KernelRolledBack", "KernelNoAsset", "KernelLightweightBlocked", "KernelUpdateHint", "KernelUpdateConfirmTitle",
         "KernelUpdateConfirm", "KernelAssetSize", "KernelValidateFailed",
         "PickerAllFiles", "PickerOpenTitle", "PickerSaveTitle", "PickerFailedTitle", "ProfilesImportFailedTitle", "ProfilesMixinReload",
+        "AboutCardTitle", "AboutGitHub", "AboutCheckUpdate", "AboutChecking", "AboutDownload", "AboutAutoCheck", "AboutAutoCheckHint", "AboutNotChecked", "AboutUpToDate", "AboutCheckFailed", "AboutLightweightBlocked",
     ];
 
     private string _currentLanguage = ChineseLanguage;
@@ -609,6 +621,20 @@ public sealed class LocalizationService : ObservableObject
     public string PickerFailedMessage(string reason) => IsEnglish
         ? $"Could not open the file dialog ({reason})."
         : $"无法打开文件对话框（{reason}）。";
+
+    // ==================== 关于 / 客户端更新 ====================
+
+    public string AppNewVersionText(string version) => IsEnglish
+        ? $"New version {version} available"
+        : $"发现新版本 {version}";
+
+    public string AppCheckFailedText(string reason) => IsEnglish
+        ? $"Update check failed: {reason}"
+        : $"检查更新失败：{reason}";
+
+    public string AppUpdateAvailableLog(string version) => IsEnglish
+        ? $"[Notice] New client version {version} is available. See Settings > About."
+        : $"[提示] 发现客户端新版本 {version}，可在设置页「关于」中查看。";
 
     // ==================== 强类型词条 ====================
 
@@ -1427,4 +1453,37 @@ public sealed class LocalizationService : ObservableObject
 
     /// <summary>重新读取文件</summary>
     public string ProfilesMixinReload => T(nameof(ProfilesMixinReload));
+
+    /// <summary>关于</summary>
+    public string AboutCardTitle => T(nameof(AboutCardTitle));
+
+    /// <summary>GitHub 主页</summary>
+    public string AboutGitHub => T(nameof(AboutGitHub));
+
+    /// <summary>检查更新</summary>
+    public string AboutCheckUpdate => T(nameof(AboutCheckUpdate));
+
+    /// <summary>正在检查更新…</summary>
+    public string AboutChecking => T(nameof(AboutChecking));
+
+    /// <summary>前往下载</summary>
+    public string AboutDownload => T(nameof(AboutDownload));
+
+    /// <summary>自动检查更新</summary>
+    public string AboutAutoCheck => T(nameof(AboutAutoCheck));
+
+    /// <summary>启动应用时自动检测客户端新版本</summary>
+    public string AboutAutoCheckHint => T(nameof(AboutAutoCheckHint));
+
+    /// <summary>尚未检查更新</summary>
+    public string AboutNotChecked => T(nameof(AboutNotChecked));
+
+    /// <summary>已是最新版本</summary>
+    public string AboutUpToDate => T(nameof(AboutUpToDate));
+
+    /// <summary>检查更新失败</summary>
+    public string AboutCheckFailed => T(nameof(AboutCheckFailed));
+
+    /// <summary>后台轻量模式下不自动检查更新</summary>
+    public string AboutLightweightBlocked => T(nameof(AboutLightweightBlocked));
 }

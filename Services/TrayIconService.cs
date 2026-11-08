@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.UI.Dispatching;
 
 namespace SingBoxWinUI.Services;
 
@@ -17,6 +18,7 @@ public sealed class TrayIconService : IDisposable
     private const int WmContextMenu = 0x007B;
 
     private const uint NimAdd = 0;
+    private const uint NimModify = 1;
     private const uint NimDelete = 2;
 
     private const uint NifMessage = 0x00000001;
@@ -35,7 +37,9 @@ public sealed class TrayIconService : IDisposable
 
     private const int IdiApplication = 32512;
     private const uint MsgfltAllow = 1;
-    private static readonly IntPtr HwndMessage = new(-3);
+
+    /// <summary>任务栏重建广播。消息窗口（HWND_MESSAGE）收不到 HWND_BROADCAST，必须用顶层窗口。</summary>
+    private static readonly uint TaskbarCreatedMessage = RegisterWindowMessageW("TaskbarCreated");
 
     private readonly string _tooltip;
     private readonly Func<bool> _isCoreRunning;
@@ -49,6 +53,14 @@ public sealed class TrayIconService : IDisposable
 
     // 委托必须被字段持有，否则 GC 后窗口过程指针失效会直接崩
     private readonly WndProcDelegate _wndProcDelegate;
+
+    /// <summary>UI 线程队列：开机重试循环必须回到有消息泵的线程上补注册。</summary>
+    private readonly DispatcherQueue? _dispatcher;
+
+    /// <summary>最近一次成功注册的 NOTIFYICONDATA，NIM_MODIFY / 重建时复用。</summary>
+    private NotifyIconData _nid;
+
+    private int _retryRunning;
 
     private IntPtr _hwnd;
     private IntPtr _icon;
@@ -78,6 +90,7 @@ public sealed class TrayIconService : IDisposable
         _getClashMode = getClashMode;
         _setClashMode = setClashMode;
         _wndProcDelegate = WndProc;
+        _dispatcher = DispatcherQueue.GetForCurrentThread();
     }
 
     public bool IsVisible { get; private set; }
@@ -110,7 +123,9 @@ public sealed class TrayIconService : IDisposable
                 return false;
             }
 
-            _hwnd = CreateWindowExW(0, className, "SingBoxWinUI.Tray", 0, 0, 0, 0, 0, HwndMessage, IntPtr.Zero, instance, IntPtr.Zero);
+            // hWndParent 必须是 0：HWND_MESSAGE 窗口收不到 HWND_BROADCAST 的 "TaskbarCreated"，
+            // 开机自启早于 explorer.exe 就绪时图标就永久丢失。窗口 style=0（无 WS_VISIBLE）不会出现在任务栏。
+            _hwnd = CreateWindowExW(0, className, "SingBoxWinUI.Tray", 0, 0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, instance, IntPtr.Zero);
             if (_hwnd == IntPtr.Zero)
             {
                 return false;
@@ -120,26 +135,28 @@ public sealed class TrayIconService : IDisposable
             _className = className;
             _instance = instance;
 
-            // 关键：显式放行唤醒消息，否则普通权限实例会被 UIPI 挡住投递不进来
+            // 显式放行两条跨权限消息：唤醒（低权限实例 → 本进程）与任务栏重建（explorer → 本进程）
             if (SingleInstance.WakeUpMessage != 0)
             {
                 ChangeWindowMessageFilterEx(_hwnd, SingleInstance.WakeUpMessage, MsgfltAllow, IntPtr.Zero);
             }
 
+            if (TaskbarCreatedMessage != 0)
+            {
+                ChangeWindowMessageFilterEx(_hwnd, TaskbarCreatedMessage, MsgfltAllow, IntPtr.Zero);
+            }
+
             _icon = LoadTrayIcon();
 
-            var data = new NotifyIconData
-            {
-                cbSize = (uint)Marshal.SizeOf<NotifyIconData>(),
-                hWnd = _hwnd,
-                uID = 1,
-                uFlags = NifMessage | NifIcon | NifTip,
-                uCallbackMessage = WmTrayIcon,
-                hIcon = _icon,
-                szTip = _tooltip,
-            };
+            var trayReady = FindWindowW("Shell_TrayWnd", null) != IntPtr.Zero;
+            var registered = trayReady && RegisterIcon(deleteFirst: false);
 
-            IsVisible = Shell_NotifyIconW(NimAdd, ref data);
+            // 开机自启时 explorer 任务栏可能还没起来：后台每 1s 补注册，最多 60 次
+            if (!registered)
+            {
+                StartRetryLoop();
+            }
+
             return IsVisible;
         }
         catch (Exception)
@@ -164,6 +181,13 @@ public sealed class TrayIconService : IDisposable
             return IntPtr.Zero;
         }
 
+        // explorer 重启 / 任务栏重建：托盘图标会全部失效，必须删掉再重新加
+        if (TaskbarCreatedMessage != 0 && message == TaskbarCreatedMessage)
+        {
+            RegisterIcon(deleteFirst: true);
+            return IntPtr.Zero;
+        }
+
         if (message == WmTrayIcon)
         {
             var mouseMessage = (uint)(lParam.ToInt64() & 0xFFFF);
@@ -182,6 +206,149 @@ public sealed class TrayIconService : IDisposable
 
         // 不能在这里 PostQuitMessage，否则会把整个应用的消息泵关掉
         return DefWindowProcW(hwnd, message, wParam, lParam);
+    }
+
+    /// <summary>构造一份完整的 NOTIFYICONDATA。</summary>
+    private NotifyIconData BuildNotifyIconData() => new()
+    {
+        cbSize = (uint)Marshal.SizeOf<NotifyIconData>(),
+        hWnd = _hwnd,
+        uID = 1,
+        uFlags = NifMessage | NifIcon | NifTip,
+        uCallbackMessage = WmTrayIcon,
+        hIcon = _icon,
+        szTip = _tooltip,
+    };
+
+    /// <summary>
+    /// 注册/重建图标。deleteFirst=true 时先 NIM_DELETE 再 NIM_ADD，
+    /// 避免任务栏重建或首次半失败后残留一条无法响应的旧图标。
+    /// </summary>
+    private bool RegisterIcon(bool deleteFirst)
+    {
+        if (_disposed || _hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (deleteFirst)
+            {
+                var remove = new NotifyIconData
+                {
+                    cbSize = (uint)Marshal.SizeOf<NotifyIconData>(),
+                    hWnd = _hwnd,
+                    uID = 1,
+                };
+                Shell_NotifyIconW(NimDelete, ref remove);
+                IsVisible = false;
+            }
+
+            var data = BuildNotifyIconData();
+            if (!Shell_NotifyIconW(NimAdd, ref data))
+            {
+                return false;
+            }
+
+            _nid = data;
+            IsVisible = true;
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 隐藏到托盘 / 唤醒窗口时的自愈保底：先用 NIM_MODIFY 探测图标是否还活着，
+    /// 失败说明任务栏重建过或图标被系统清掉，立刻删掉重加。
+    /// </summary>
+    public bool EnsureTrayIcon()
+    {
+        if (_disposed || _hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            var probe = _nid.cbSize == 0 ? BuildNotifyIconData() : _nid;
+            if (Shell_NotifyIconW(NimModify, ref probe))
+            {
+                IsVisible = true;
+                return true;
+            }
+
+            return RegisterIcon(deleteFirst: true);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>开机启动期后台重试：1s 一次、最多 60 次，全部在 UI 线程执行。</summary>
+    private void StartRetryLoop()
+    {
+        if (_dispatcher is null || Interlocked.Exchange(ref _retryRunning, 1) == 1)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                for (var attempt = 0; attempt < 60 && !_disposed && !IsVisible; attempt++)
+                {
+                    await Task.Delay(1000).ConfigureAwait(false);
+                    if (_disposed || IsVisible)
+                    {
+                        break;
+                    }
+
+                    var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    if (!_dispatcher.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            tcs.TrySetResult(
+                                FindWindowW("Shell_TrayWnd", null) != IntPtr.Zero
+                                && RegisterIcon(deleteFirst: true));
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.TrySetException(ex);
+                        }
+                    }))
+                    {
+                        break;
+                    }
+
+                    try
+                    {
+                        if (await tcs.Task.ConfigureAwait(false))
+                        {
+                            break;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // 单次失败继续重试
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 重试循环不向启动流程抛
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _retryRunning, 0);
+            }
+        });
     }
 
     private void ShowContextMenu()
@@ -393,6 +560,12 @@ public sealed class TrayIconService : IDisposable
     private static extern ushort RegisterClassExW(ref WndClassEx windowClass);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint RegisterWindowMessageW(string message);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr FindWindowW(string? className, string? windowName);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool UnregisterClassW(string className, IntPtr instance);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -424,14 +597,27 @@ public sealed class TrayIconService : IDisposable
 
         try
         {
-            var exe = Environment.ProcessPath;
-            if (!string.IsNullOrEmpty(exe) && File.Exists(exe))
+            // 计划任务 ONLOGON 的默认 CWD 是 System32，所有路径都必须用绝对路径
+            var candidates = new[]
             {
-                var count = ExtractIconExW(exe, 0, out var large, out var small, 1);
+                Environment.ProcessPath,
+                Path.Combine(AppContext.BaseDirectory, "SingBoxWinUI.exe"),
+                Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico"),
+            };
+
+            foreach (var path in candidates)
+            {
+                if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                {
+                    continue;
+                }
+
+                var count = ExtractIconExW(path, 0, out var large, out var small, 1);
                 if (count > 0)
                 {
                     if (small != IntPtr.Zero)
                     {
+                        if (large != IntPtr.Zero) DestroyIcon(large);
                         return small;
                     }
 

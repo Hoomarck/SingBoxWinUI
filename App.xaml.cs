@@ -12,7 +12,7 @@ namespace SingBoxWinUI;
 
 public partial class App : Application
 {
-    private Window? _window;
+    private MainWindow? _window;
 
     /// <summary>
     /// 全局单例 ViewModel。页面用 NavigationCacheMode.Required 缓存，
@@ -153,12 +153,19 @@ public partial class App : Application
             _ = RunScheduledRuleSetUpdateAsync();
         }
 
+        // 启动后静默检查客户端更新（自动开关打开时；轻量模式绝不发起）
+        if (AppSettings.Current.AutoCheckAppUpdate)
+        {
+            _ = RunStartupAppUpdateCheckAsync();
+        }
+
         ApplyTheme(AppSettings.Current.AppTheme);
 
         if (HasArgument("--autorun") && AppSettings.Current.SilentStartToTray)
         {
-            // 开机自启：静默驻留托盘
+            // 开机自启：静默驻留托盘；此时 explorer 可能刚起来，补一次图标注册
             _window.AppWindow.Hide();
+            _window.EnsureTrayIcon();
         }
 
         // 自动拉起内核：开机自启，或者上次退出时内核本来就是开着的
@@ -283,6 +290,37 @@ public partial class App : Application
         catch (Exception)
         {
             // 升级失败不影响主流程
+        }
+    }
+
+    /// <summary>
+    /// 启动完成 10 秒后静默检查客户端新版本。
+    /// 轻量模式下绝不发起任何后台网络请求（红线）；检查结果由 AppUpdateService 广播给设置页。
+    /// </summary>
+    public static async Task RunStartupAppUpdateCheckAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+
+            if (!AppSettings.Current.AutoCheckAppUpdate || Main.IsInLightweightMode)
+            {
+                return;
+            }
+
+            int? mixedPort = Main.IsRunning && Main.MixedPort > 0 ? Main.MixedPort : null;
+            var release = await AppUpdateService.CheckAsync(mixedPort).ConfigureAwait(false);
+
+            if (release.IsNewer)
+            {
+                Main.AppendLog(LocalizationService.Instance.AppUpdateAvailableLog(release.VersionText));
+            }
+        }
+        catch (Exception ex)
+        {
+            Main.AppendLog(LocalizationService.Instance.Say(
+                $"[提示] 客户端更新检查失败：{ex.Message}",
+                $"[Notice] Client update check failed: {ex.Message}"));
         }
     }
 

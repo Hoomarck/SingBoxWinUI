@@ -352,6 +352,17 @@ TABLE = [
     ("PickerFailedTitle", "文件对话框打开失败", "File dialog failed"),
     ("ProfilesImportFailedTitle", "导入失败", "Import failed"),
     ("ProfilesMixinReload", "重新读取文件", "Reload from disk"),
+    ("AboutCardTitle", "关于", "About"),
+    ("AboutGitHub", "GitHub 主页", "GitHub"),
+    ("AboutCheckUpdate", "检查更新", "Check for updates"),
+    ("AboutChecking", "正在检查更新…", "Checking for updates…"),
+    ("AboutDownload", "前往下载", "Download"),
+    ("AboutAutoCheck", "自动检查更新", "Automatically check for updates"),
+    ("AboutAutoCheckHint", "启动应用时自动检测客户端新版本", "Automatically check for new client releases on startup"),
+    ("AboutNotChecked", "尚未检查更新", "Not checked yet"),
+    ("AboutUpToDate", "已是最新版本", "Up to date"),
+    ("AboutCheckFailed", "检查更新失败", "Update check failed"),
+    ("AboutLightweightBlocked", "后台轻量模式下不自动检查更新", "No automatic update check in lightweight mode"),
 ]
 
 _seen_zh = set()

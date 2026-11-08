@@ -64,7 +64,7 @@ public sealed partial class MainWindow : Window
 
         App.Main.AppendLog(_tray.Show()
             ? "[托盘] 图标已创建，关闭窗口将最小化到托盘。"
-            : "[托盘] 图标创建失败，关闭窗口将直接退出。");
+            : "[托盘] 任务栏尚未就绪，图标注册已转入后台重试（最多 60 秒）。");
 
         _lightweight = new LightweightModeService(
             DispatcherQueue,
@@ -103,6 +103,9 @@ public sealed partial class MainWindow : Window
 
         Closed += OnClosed;
     }
+
+    /// <summary>供启动流程在 --autorun 静默隐藏后补一次托盘图标自愈。</summary>
+    public void EnsureTrayIcon() => _tray.EnsureTrayIcon();
 
     private void OnNavigationRequested(object? sender, string tag)
     {
@@ -163,6 +166,7 @@ public sealed partial class MainWindow : Window
         // 隐藏到托盘继续后台运行
         args.Cancel = true;
         sender.Hide();
+        _tray.EnsureTrayIcon();
 
         if (App.AppSettings.Current.EnableLightweightMode)
         {
@@ -233,6 +237,9 @@ public sealed partial class MainWindow : Window
 
     private void ShowFromTray()
     {
+        // 任务栏可能在驻留期间重建过，唤醒时先确保图标还在
+        _tray.EnsureTrayIcon();
+
         // 唤醒就立刻取消待进入的倒计时，并退出轻量模式
         _lightweight.CancelPending();
         _lightweight.Exit();

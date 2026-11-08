@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Dispatching;
 using CommunityToolkit.Mvvm.Input;
 using SingBoxWinUI.Services;
 
@@ -27,6 +28,24 @@ public partial class SettingsViewModel : ObservableObject
     private KernelState _kernelState = KernelState.NotChecked;
 
     private KernelUpdateStage _kernelStage = KernelUpdateStage.Downloading;
+
+    private readonly DispatcherQueue? _dispatcher = DispatcherQueue.GetForCurrentThread();
+
+    private AppReleaseInfo? _appRelease;
+
+    private string _appUpdateReason = string.Empty;
+
+    private AppUpdateState _appUpdateState = AppUpdateState.NotChecked;
+
+    private enum AppUpdateState
+    {
+        NotChecked,
+        Checking,
+        UpToDate,
+        Available,
+        Failed,
+        LightweightBlocked,
+    }
 
     private enum KernelState
     {
@@ -91,6 +110,7 @@ public partial class SettingsViewModel : ObservableObject
         WebDavUsername = current.WebDavUsername;
         WebDavPassword = current.WebDavPassword;
         AutoWebDavBackupOnStartup = current.AutoWebDavBackupOnStartup;
+        AutoCheckAppUpdate = current.AutoCheckAppUpdate;
 
         TunInterfaceName = current.TunInterfaceName;
         TunStackIndex = current.TunStack?.ToLowerInvariant() switch
@@ -118,6 +138,17 @@ public partial class SettingsViewModel : ObservableObject
         else
         {
             _ = LoadCoreVersionAsync();
+        }
+
+        // 启动期检查可能早于本页创建：先吃缓存结果，再订阅后续广播
+        AppUpdateService.CheckCompleted += OnAppUpdateCheckCompleted;
+        if (App.Main.IsInLightweightMode)
+        {
+            _appUpdateState = AppUpdateState.LightweightBlocked;
+        }
+        else if (AppUpdateService.LastResult is { } cached)
+        {
+            ApplyAppUpdateResult(cached);
         }
 
         // 自启状态要查系统（计划任务 / 注册表），异步探测，别在 UI 线程同步等 schtasks
@@ -170,6 +201,7 @@ public partial class SettingsViewModel : ObservableObject
             CloseToTray = current.CloseToTray;
             SilentStartToTray = current.SilentStartToTray;
             AutoStartCore = current.AutoStartCore;
+            AutoCheckAppUpdate = current.AutoCheckAppUpdate;
 
             // TUN 参数：恢复备份后必须跟着刷新，否则界面显示旧值、
             // 用户点"应用"时写回的却是他以为没改过的新值。
@@ -287,6 +319,7 @@ public partial class SettingsViewModel : ObservableObject
 
         // 内核卡片的状态文案是代码拼出来的，切语言要立即重算
         RaiseKernelTexts();
+        RaiseAppUpdateTexts();
     }
 
     /// <summary>0 = 简体中文，1 = English。</summary>
@@ -959,6 +992,134 @@ public partial class SettingsViewModel : ObservableObject
         finally
         {
             IsKernelBusy = false;
+        }
+    }
+
+
+    // ---- 关于 / 客户端更新检查 ----
+
+    /// <summary>启动应用时自动检查客户端新版本（切换即保存设置）。</summary>
+    [ObservableProperty]
+    public partial bool AutoCheckAppUpdate { get; set; } = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCheckAppUpdate))]
+    public partial bool IsCheckingAppUpdate { get; set; }
+
+    partial void OnAutoCheckAppUpdateChanged(bool value)
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        _settings.Current.AutoCheckAppUpdate = value;
+        _settings.Save();
+    }
+
+    public bool CanCheckAppUpdate => !IsCheckingAppUpdate;
+
+    public string AppVersionText => AppUpdateService.CurrentVersionText;
+
+    public string RepositoryUrl => AppUpdateService.RepositoryUrl;
+
+    public string AppUpdateStatusText => _appUpdateState switch
+    {
+        AppUpdateState.Checking => LocalizationService.Instance.AboutChecking,
+        AppUpdateState.UpToDate => LocalizationService.Instance.AboutUpToDate,
+        AppUpdateState.Available => LocalizationService.Instance.AppNewVersionText(
+            _appRelease?.VersionText ?? string.Empty),
+        AppUpdateState.Failed => LocalizationService.Instance.AppCheckFailedText(_appUpdateReason),
+        AppUpdateState.LightweightBlocked => LocalizationService.Instance.AboutLightweightBlocked,
+        _ => LocalizationService.Instance.AboutNotChecked,
+    };
+
+    /// <summary>仅发现新版本时显示「前往下载」。</summary>
+    public Visibility AppUpdateDownloadVisibility => _appUpdateState == AppUpdateState.Available
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    private void SetAppUpdateState(AppUpdateState state)
+    {
+        _appUpdateState = state;
+        RaiseAppUpdateTexts();
+    }
+
+    private void RaiseAppUpdateTexts()
+    {
+        OnPropertyChanged(nameof(AppUpdateStatusText));
+        OnPropertyChanged(nameof(AppUpdateDownloadVisibility));
+        OnPropertyChanged(nameof(CanCheckAppUpdate));
+        OnPropertyChanged(nameof(AppVersionText));
+    }
+
+    private void ApplyAppUpdateResult(AppReleaseInfo info)
+    {
+        _appRelease = info;
+        _appUpdateReason = string.Empty;
+        SetAppUpdateState(info.IsNewer ? AppUpdateState.Available : AppUpdateState.UpToDate);
+    }
+
+    private void OnAppUpdateCheckCompleted(object? sender, AppReleaseInfo info)
+    {
+        if (_dispatcher is not null && !_dispatcher.HasThreadAccess)
+        {
+            _dispatcher.TryEnqueue(() => ApplyAppUpdateResult(info));
+            return;
+        }
+
+        ApplyAppUpdateResult(info);
+    }
+
+    /// <summary>手动检查：轻量模式下也允许用户主动点；自动检查才受轻量模式限制。</summary>
+    [RelayCommand]
+    private async Task CheckAppUpdate()
+    {
+        if (IsCheckingAppUpdate)
+        {
+            return;
+        }
+
+        IsCheckingAppUpdate = true;
+        _appUpdateReason = string.Empty;
+        SetAppUpdateState(AppUpdateState.Checking);
+
+        try
+        {
+            var info = await AppUpdateService.CheckAsync(ProxyPortForUpdate);
+            ApplyAppUpdateResult(info);
+        }
+        catch (OperationCanceledException)
+        {
+            SetAppUpdateState(AppUpdateState.NotChecked);
+        }
+        catch (Exception ex)
+        {
+            _appUpdateReason = ex.Message;
+            SetAppUpdateState(AppUpdateState.Failed);
+        }
+        finally
+        {
+            IsCheckingAppUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenRepository() => OpenUrl(AppUpdateService.RepositoryUrl);
+
+    [RelayCommand]
+    private void OpenAppRelease() => OpenUrl(_appRelease?.ReleaseUrl ?? AppUpdateService.RepositoryUrl);
+
+    private void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = LocalizationService.Instance.Say(
+                $"打开链接失败：{ex.Message}", $"Could not open link: {ex.Message}");
         }
     }
 
