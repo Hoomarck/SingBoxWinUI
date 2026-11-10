@@ -155,6 +155,12 @@ public partial class MainViewModel : ObservableObject
     /// <summary>构造完成前不响应属性联动（避免初始值触发日志/回滚）。</summary>
     private bool _isReady;
 
+    /// <summary>两个驱动开关的协调锁：连点排队，每次读最新状态做幂等决策。</summary>
+    private readonly SemaphoreSlim _switchGate = new(1, 1);
+
+    /// <summary>当前内核运行配置实际使用的 TUN 值，用于判断是否需要热重启。</summary>
+    private bool _appliedTunEnabled;
+
     public MainViewModel(
         DispatcherQueue dispatcher,
         AppSettingsService settings,
@@ -172,6 +178,9 @@ public partial class MainViewModel : ObservableObject
 
         // 恢复上次选中的配置与 TUN 开关；没有指定时用当前激活订阅
         var saved = settings.Current;
+
+        // 边界 C：本次是否会自启内核（App.LaunchCore 用同一条件）
+        var willAutoStart = saved.AutoStartCore || saved.LastCoreRunning;
 
         // 绿色版会被移动目录 / 跨机恢复备份，存的绝对路径随时可能失效，
         // 这里统一走"按当前运行时重新定位"的解析，绝不因为换目录就起不来。
@@ -212,10 +221,20 @@ public partial class MainViewModel : ObservableObject
             AppendLog("[提示] 当前非管理员权限，已自动关闭 TUN 模式开关");
         }
 
-        IsTunEnabled = tun;
-
-        // 恢复上次的代理意图；真正的注册表操作要等内核起来才做
-        IsSystemProxyEnabled = saved.IsSystemProxyEnabled;
+        if (!willAutoStart)
+        {
+            // 边界 C：本次不自启内核 -> 未运行态，两个驱动开关必须与运行态对齐为 false。
+            // 只改内存显示，磁盘偏好保留，供下次开启自启时按原组合恢复。
+            tun = false;
+            IsTunEnabled = false;
+            IsSystemProxyEnabled = false;
+        }
+        else
+        {
+            // 自启：按上次开启的代理 / TUN 组合恢复，AutoStartCoreAsync 负责兜底空组合
+            IsTunEnabled = tun;
+            IsSystemProxyEnabled = saved.IsSystemProxyEnabled;
+        }
         ClashModeIndex = saved.ClashMode?.Trim().ToLowerInvariant() switch
         {
             "global" => 1,
@@ -241,6 +260,7 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanEditSettings))]
+    [NotifyPropertyChangedFor(nameof(StatusTitle))]
     public partial bool IsRunning { get; set; }
 
     [ObservableProperty]
@@ -251,17 +271,23 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial string StatusText { get; set; } = LocalizationService.Instance.StatusStopped;
 
+    /// <summary>概览页大号状态标题：运行中按当前开启的代理 / TUN 组合显示。</summary>
+    public string StatusTitle => LocalizationService.Instance.StatusTitle(
+        IsRunning, IsSystemProxyEnabled, IsTunEnabled);
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ConfigFileName))]
     [NotifyPropertyChangedFor(nameof(ConfigSummary))]
     public partial string ConfigPath { get; set; } = string.Empty;
 
-    /// <summary>TUN 虚拟网卡模式。默认关闭：开启需要管理员权限。</summary>
+    /// <summary>TUN 虚拟网卡模式。驱动内核启停的核心开关之一。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusTitle))]
     public partial bool IsTunEnabled { get; set; }
 
-    /// <summary>系统代理偏好。只有内核运行中才会真正写注册表。</summary>
+    /// <summary>系统代理。驱动内核启停的核心开关之一，运行中立即写注册表。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusTitle))]
     public partial bool IsSystemProxyEnabled { get; set; }
 
     /// <summary>0 = 规则(Rule) / 1 = 全局(Global) / 2 = 直连(Direct)。</summary>
@@ -671,9 +697,7 @@ public partial class MainViewModel : ObservableObject
         _ = HandleToggleAsync(value);
     }
 
-    /// <summary>
-    /// TUN 开关联动：非管理员拦截回滚；未运行只记配置；运行中触发热重启。
-    /// </summary>
+    /// <summary>TUN 开关：交给统一协调器（守卫屏蔽代码回写造成的循环重入）。</summary>
     partial void OnIsTunEnabledChanged(bool value)
     {
         if (!_isReady || _isUpdatingTunFromCode)
@@ -681,27 +705,10 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        if (value && !IsAdmin)
-        {
-            AppendLog("[提示] 开启 TUN 模式需要管理员权限");
-            SetTunEnabledFromCode(false);
-
-            // 不动磁盘上的偏好：用户提权后仍希望 TUN 是开着的
-            return;
-        }
-
-        PersistTunState(value);
-
-        if (!IsRunning)
-        {
-            AppendLog($"[配置] TUN 模式已设为：{(value ? "开启" : "关闭")}（将在下次启动内核时生效）");
-            return;
-        }
-
-        _ = RestartCoreAsync("[状态] 正在切换 TUN 模式并重启内核...");
+        _ = ReconcileSwitchesAsync();
     }
 
-    /// <summary>系统代理偏好变化：运行中立即生效，否则只记设置。</summary>
+    /// <summary>系统代理开关：交给统一协调器（守卫屏蔽代码回写造成的循环重入）。</summary>
     partial void OnIsSystemProxyEnabledChanged(bool value)
     {
         if (!_isReady || _isUpdatingProxyFromCode)
@@ -709,23 +716,123 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        _settings.Current.IsSystemProxyEnabled = value;
-        _settings.Save();
+        _ = ReconcileSwitchesAsync();
+    }
 
-        if (!IsRunning)
+    /// <summary>
+    /// 开关驱动内核的唯一决策点。每次执行都读取「当前」两个开关的最新值，
+    /// 因此连点会自然合并到最终状态；不设 IsBusy，热重启期间开关保持可点。
+    ///
+    /// 5 个分支：
+    ///   ① 全关 -> 开系统代理：冷启动 StartCoreAsync（成功后自动挂代理）
+    ///   ② 全关 -> 开 TUN：非管理员落盘 + UAC 提权 / 取消则回滚；管理员直接冷启动
+    ///   ③ 运行中切 TUN：至少一开，热重启 RestartCoreAsync 注入或移除 TUN 入站
+    ///   ④ 运行中只切系统代理：mixed 端口已就绪，Apply / Clear 秒级生效，不重启
+    ///   ⑤ 两个全关：StopCoreAsync 停内核并清理系统代理 / 卸载 TUN
+    /// </summary>
+    private async Task ReconcileSwitchesAsync()
+    {
+        await _switchGate.WaitAsync();
+        try
         {
-            // 未运行只记意图，下次拉起内核时自动挂上
-            AppendLog($"[代理] 系统代理已设为：{(value ? "开启" : "关闭")}（将在内核启动后生效）");
-            return;
-        }
+            if (_isShutdown)
+            {
+                return;
+            }
 
-        if (value)
-        {
-            ApplySystemProxy();
+            var proxy = IsSystemProxyEnabled;
+            var tun = IsTunEnabled;
+
+            // ② 非管理员开 TUN：落盘意图 + 提权重启；取消则把开关拨回
+            if (tun && !IsAdmin)
+            {
+                _settings.Current.IsTunEnabled = true;
+                _settings.Current.LastCoreRunning = true;
+                _settings.Save();
+
+                AppendLog("[提示] TUN 模式需要管理员权限，正在申请提权重启…");
+                if (RestartAsAdmin())
+                {
+                    return; // 提权实例接管，本实例即将退出
+                }
+
+                AppendLog("[提示] 已取消管理员提权，TUN 开关已拨回关闭。");
+                SetTunEnabledFromCode(false);
+                _settings.Current.IsTunEnabled = false;
+                _settings.Save();
+                tun = false;
+                proxy = IsSystemProxyEnabled;
+            }
+            else
+            {
+                // 两个开关都是「意图」，落盘供下次启动恢复
+                _settings.Current.IsSystemProxyEnabled = proxy;
+                _settings.Current.IsTunEnabled = tun;
+                if (tun && IsAdmin)
+                {
+                    _settings.Current.AlwaysRunAsAdmin = true;
+                }
+
+                _settings.Save();
+            }
+
+            var wantRunning = proxy || tun;
+
+            // ⑤ 全关：停内核
+            if (!wantRunning)
+            {
+                AppendLog("[状态] 系统代理与 TUN 均已关闭，正在停止内核…");
+                ClearSystemProxy();
+
+                if (IsRunning || _service.IsRunning)
+                {
+                    await StopCoreAsync();
+                }
+
+                _settings.Current.LastCoreRunning = false;
+                _settings.Save();
+                SetRunningFromProcess(false);
+                return;
+            }
+
+            // ① ② 冷启动（此前内核未运行）
+            if (!IsRunning)
+            {
+                AppendLog(proxy
+                    ? "[状态] 已开启系统代理，正在启动内核…"
+                    : "[状态] 已开启 TUN 模式，正在启动内核…");
+
+                // 用守卫置位：屏蔽 OnIsRunningChanged 里的 HandleToggleAsync，避免重复启动
+                SetRunningFromProcess(true);
+                await StartCoreAsync();
+                // 启动失败由 Fail() 回滚两个开关（边界 A）
+                return;
+            }
+
+            // ③ 运行中 TUN 组合变化：重建运行配置，热重启
+            if (tun != _appliedTunEnabled)
+            {
+                await RestartCoreAsync("[状态] 正在切换 TUN 模式并重启内核...");
+                return;
+            }
+
+            // ④ 运行中只切系统代理：mixed 端口已就绪，秒级生效
+            if (proxy)
+            {
+                ApplySystemProxy();
+            }
+            else
+            {
+                ClearSystemProxy();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            ClearSystemProxy();
+            Fail($"开关切换失败：{ex.Message}");
+        }
+        finally
+        {
+            _switchGate.Release();
         }
     }
 
@@ -967,6 +1074,8 @@ public partial class MainViewModel : ObservableObject
                 _ => 0,
             };
             IsTunEnabled = current.IsTunEnabled && IsAdmin;
+            IsSystemProxyEnabled = current.IsSystemProxyEnabled;
+            _appliedTunEnabled = IsTunEnabled && IsRunning;
 
             // 备份恢复 / 移动目录后 ConfigPath 可能指向旧路径：统一走重定位。
             // _isReady=false 保证这里不触发落盘。
@@ -988,6 +1097,7 @@ public partial class MainViewModel : ObservableObject
             ? LocalizationService.Instance.StatusRunning
             : LocalizationService.Instance.StatusStopped;
 
+        OnPropertyChanged(nameof(StatusTitle));
         OnPropertyChanged(nameof(ClashModeDisplay));
         OnPropertyChanged(nameof(ConfigFileName));
         OnPropertyChanged(nameof(ConfigSummary));
@@ -1320,7 +1430,7 @@ public partial class MainViewModel : ObservableObject
         _settings.Save();
     }
 
-    /// <summary>开机自启时的自动启动内核。</summary>
+    /// <summary>开机自启时的自动启动内核（边界 C 的空组合兜底在这里）。</summary>
     public async Task AutoStartCoreAsync()
     {
         await Task.Yield();
@@ -1328,6 +1438,15 @@ public partial class MainViewModel : ObservableObject
         if (IsRunning)
         {
             return;
+        }
+
+        // 边界 C：开了自动启动但上次没留下任何开启项 -> 默认启用系统代理
+        if (!IsSystemProxyEnabled && !IsTunEnabled)
+        {
+            SetSystemProxyFromCode(true);
+            _settings.Current.IsSystemProxyEnabled = true;
+            _settings.Save();
+            AppendLog("[状态] 开机自启：未记录代理方式，已默认启用系统代理。");
         }
 
         // 非管理员又开着 TUN，自启会弹 UAC，登录时体验极差，直接跳过
@@ -1338,7 +1457,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         AppendLog("[状态] 开机自启：正在启动内核…");
-        IsRunning = true;
+        await ReconcileSwitchesAsync();
     }
 
     /// <summary>以管理员身份重新拉起自身并退出当前实例。返回 false 表示提权被取消或失败。</summary>
@@ -1544,15 +1663,19 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ToggleCore()
     {
-        // 托盘菜单也会打到这里：启停进行中直接忽略，避免与主页开关并发触发
-        // 两条 HandleToggleAsync（一条启动一条停止）互相踩状态。
-        if (IsBusy)
+        // 托盘菜单的启停等价于「全关」或「默认开系统代理」，
+        // 与概览页两个开关共用同一个协调器，避免两条启停链路互相踩状态。
+        if (IsRunning)
         {
-            return;
+            SetSystemProxyFromCode(false);
+            SetTunEnabledFromCode(false);
+        }
+        else
+        {
+            SetSystemProxyFromCode(true);
         }
 
-        // 与 ToggleSwitch 走同一条链路：改 IsRunning -> OnIsRunningChanged -> 启停
-        IsRunning = !IsRunning;
+        _ = ReconcileSwitchesAsync();
     }
 
     [RelayCommand]
@@ -1764,6 +1887,9 @@ public partial class MainViewModel : ObservableObject
         _settings.Current.LastCoreRunning = true;
         _settings.Save();
 
+        // 记录本次运行配置实际注入的 TUN 值：开关协调器据此判断是否需要热重启
+        _appliedTunEnabled = IsTunEnabled;
+
         StartTelemetry();
 
         ApplySystemProxy();
@@ -1794,6 +1920,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         AppendLog("正在重试启动内核…");
+        SetRunningFromProcess(true);
         await StartCoreAsync();
     }
 
@@ -1826,6 +1953,7 @@ public partial class MainViewModel : ObservableObject
             // 只有用户主动停止才写 false；Shutdown / 关机不算
             _settings.Current.LastCoreRunning = false;
             _settings.Save();
+            _appliedTunEnabled = false;
         }
         finally
         {
@@ -2061,6 +2189,7 @@ public partial class MainViewModel : ObservableObject
 
         FlushPendingLogs();
 
+        var willRetry = false;
         if (!expected)
         {
             // 非用户触发（崩溃 / 配置错误 / 异常退出），补一条日志再被动回写状态
@@ -2075,6 +2204,7 @@ public partial class MainViewModel : ObservableObject
                 _cacheLockRetryAt = DateTime.UtcNow;
                 AppendLog("[提示] cache.db 被占用（initialize cache-file: timeout），1.5 秒后自动重试启动…");
                 _ = RetryStartAfterCacheLockAsync(epoch);
+                willRetry = true;
             }
         }
 
@@ -2094,7 +2224,25 @@ public partial class MainViewModel : ObservableObject
         // 内核已经没了：先把长连接和系统代理收掉，再回写运行状态。
         // 少了这一步，崩溃退出后浏览器会一直指向死端口，/traffic 还会每秒重连。
         StopTelemetry();
-        DetachSystemProxy();
+
+        if (willRetry)
+        {
+            // cache.db 占锁是可自愈的瞬态故障：只摘注册表代理，保留两个开关的意图，
+            // 让 RetryStartAfterCacheLockAsync 重启后能按原组合把代理挂回来。
+            ClearSystemProxy();
+        }
+        else
+        {
+            DetachSystemProxy();
+
+            // 边界 B：意外退出且不会自动重试时，把两个开关拨回 false，
+            // 避免「开关开着但内核已死」。
+            if (!expected)
+            {
+                RollbackSwitches("[提示] 内核意外退出，代理与 TUN 开关已自动关闭。");
+            }
+        }
+
         SetRunningFromProcess(false);
     }
 
@@ -2125,7 +2273,26 @@ public partial class MainViewModel : ObservableObject
         // 否则浏览器会一直指向一个没人监听的端口。
         DetachSystemProxy();
 
+        // 边界 A：内核没起来却把开关留在开启状态，会让界面显示「运行中」
+        // 甚至把系统代理指向死端口。用代码守卫把两个开关拨回 false 并落盘。
+        RollbackSwitches("[提示] 内核启动未成功，代理与 TUN 开关已自动关闭。");
+
         SetRunningFromProcess(false);
+    }
+
+    /// <summary>两个驱动开关的代码守卫回滚 + 落盘，绝不触发二次联动。</summary>
+    private void RollbackSwitches(string reason)
+    {
+        SetSystemProxyFromCode(false);
+        SetTunEnabledFromCode(false);
+
+        _settings.Current.IsSystemProxyEnabled = false;
+        _settings.Current.IsTunEnabled = false;
+        _settings.Current.LastCoreRunning = false;
+        _settings.Save();
+        _appliedTunEnabled = false;
+
+        AppendLog(reason);
     }
 
     /// <summary>判断 check 失败是否由"规则集文件不存在"引起。</summary>

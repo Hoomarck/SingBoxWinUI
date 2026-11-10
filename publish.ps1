@@ -17,7 +17,7 @@
       * 所有清理动作只发生在 publish\SingBoxRunner 暂存目录内。
 
 .PARAMETER Version
-    版本号，用于归档文件名（默认 1.0.0）。
+    版本号，用于归档文件名（默认 1.1.0）。
 
 .PARAMETER OnlyRequiredRuleSets
     默认把 rulesets\ 下全部 .json 原样打包，保证解压后与源码一致。
@@ -33,11 +33,11 @@
     powershell -ExecutionPolicy Bypass -File .\publish.ps1
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File .\publish.ps1 -Version 1.0.1 -IncludeAllPublicRuleSets
+    powershell -ExecutionPolicy Bypass -File .\publish.ps1 -Version 1.1.0 -IncludeAllPublicRuleSets
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.1.0",
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     # 未安装 Inno Setup 时可显式传 ISCC.exe 路径（例如便携解压出来的那份）

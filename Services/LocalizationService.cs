@@ -300,6 +300,10 @@ public sealed class LocalizationService : ObservableObject
         ["AboutUpToDate"] = ("已是最新版本", "Up to date"),
         ["AboutCheckFailed"] = ("检查更新失败", "Update check failed"),
         ["AboutLightweightBlocked"] = ("后台轻量模式下不自动检查更新", "No automatic update check in lightweight mode"),
+        ["StatusRunningProxy"] = ("运行中 (系统代理)", "Running (System Proxy)"),
+        ["StatusRunningTun"] = ("运行中 (TUN)", "Running (TUN)"),
+        ["StatusRunningBoth"] = ("运行中 (系统代理 + TUN)", "Running (System Proxy + TUN)"),
+        ["HomeSwitchHint"] = ("开启任一开关即启动内核，全部关闭即停止内核", "Turn on either switch to start the core; turn both off to stop it"),
     };
 
     /// <summary>所有词条名，切语言时逐个通知。</summary>
@@ -352,6 +356,7 @@ public sealed class LocalizationService : ObservableObject
         "KernelUpdateConfirm", "KernelAssetSize", "KernelValidateFailed",
         "PickerAllFiles", "PickerOpenTitle", "PickerSaveTitle", "PickerFailedTitle", "ProfilesImportFailedTitle", "ProfilesMixinReload",
         "AboutCardTitle", "AboutGitHub", "AboutCheckUpdate", "AboutChecking", "AboutDownload", "AboutAutoCheck", "AboutAutoCheckHint", "AboutNotChecked", "AboutUpToDate", "AboutCheckFailed", "AboutLightweightBlocked",
+        "StatusRunningProxy", "StatusRunningTun", "StatusRunningBoth", "HomeSwitchHint",
     ];
 
     private string _currentLanguage = ChineseLanguage;
@@ -621,6 +626,32 @@ public sealed class LocalizationService : ObservableObject
     public string PickerFailedMessage(string reason) => IsEnglish
         ? $"Could not open the file dialog ({reason})."
         : $"无法打开文件对话框（{reason}）。";
+
+    /// <summary>概览页大号状态标题：按「运行中 + 当前开启项」组合。</summary>
+    public string StatusTitle(bool running, bool proxy, bool tun)
+    {
+        if (!running)
+        {
+            return T(nameof(StatusStopped));
+        }
+
+        if (proxy && tun)
+        {
+            return T(nameof(StatusRunningBoth));
+        }
+
+        if (proxy)
+        {
+            return T(nameof(StatusRunningProxy));
+        }
+
+        if (tun)
+        {
+            return T(nameof(StatusRunningTun));
+        }
+
+        return T(nameof(StatusRunning));
+    }
 
     // ==================== 关于 / 客户端更新 ====================
 
@@ -1486,4 +1517,16 @@ public sealed class LocalizationService : ObservableObject
 
     /// <summary>后台轻量模式下不自动检查更新</summary>
     public string AboutLightweightBlocked => T(nameof(AboutLightweightBlocked));
+
+    /// <summary>运行中 (系统代理)</summary>
+    public string StatusRunningProxy => T(nameof(StatusRunningProxy));
+
+    /// <summary>运行中 (TUN)</summary>
+    public string StatusRunningTun => T(nameof(StatusRunningTun));
+
+    /// <summary>运行中 (系统代理 + TUN)</summary>
+    public string StatusRunningBoth => T(nameof(StatusRunningBoth));
+
+    /// <summary>开启任一开关即启动内核，全部关闭即停止内核</summary>
+    public string HomeSwitchHint => T(nameof(HomeSwitchHint));
 }

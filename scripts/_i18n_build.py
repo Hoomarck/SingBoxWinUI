@@ -363,6 +363,10 @@ TABLE = [
     ("AboutUpToDate", "已是最新版本", "Up to date"),
     ("AboutCheckFailed", "检查更新失败", "Update check failed"),
     ("AboutLightweightBlocked", "后台轻量模式下不自动检查更新", "No automatic update check in lightweight mode"),
+    ("StatusRunningProxy", "运行中 (系统代理)", "Running (System Proxy)"),
+    ("StatusRunningTun", "运行中 (TUN)", "Running (TUN)"),
+    ("StatusRunningBoth", "运行中 (系统代理 + TUN)", "Running (System Proxy + TUN)"),
+    ("HomeSwitchHint", "开启任一开关即启动内核，全部关闭即停止内核", "Turn on either switch to start the core; turn both off to stop it"),
 ]
 
 _seen_zh = set()

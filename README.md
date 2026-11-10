@@ -56,12 +56,12 @@
 ## 📦 下载与安装
 
 > 💡 **新手 / 首次安装**
-> 下载 **`SingBoxWinUI-Setup-v1.0.0-win-x64-with-core.exe`** —— 内置 `sing-box` 核心与全套规则集，**双击安装即可使用**，安装时可勾选「开机自启」和「桌面快捷方式」。
+> 下载 **`SingBoxWinUI-Setup-v1.1.0-win-x64-with-core.exe`** —— 内置 `sing-box` 核心与全套规则集，**双击安装即可使用**，安装时可勾选「开机自启」和「桌面快捷方式」。
 
 | 版本 | 适合谁 | 安装包（推荐） | 免安装便携包 |
 | :--- | :--- | :--- | :--- |
-| **with-core**<br>带核心完整版 | 首次使用 | `SingBoxWinUI-Setup-v1.0.0-win-x64-with-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-with-core.7z` |
-| **no-core**<br>不带核心精简版 | 仅更新 |`SingBoxWinUI-Setup-v1.0.0-win-x64-no-core.exe` | `SingBoxWinUI-v1.0.0-win-x64-no-core.7z` |
+| **with-core**<br>带核心完整版 | 首次使用 | `SingBoxWinUI-Setup-v1.1.0-win-x64-with-core.exe` | `SingBoxWinUI-v1.1.0-win-x64-with-core.7z` |
+| **no-core**<br>不带核心精简版 | 仅更新 |`SingBoxWinUI-Setup-v1.1.0-win-x64-no-core.exe` | `SingBoxWinUI-v1.1.0-win-x64-no-core.7z` |
 
 
 ### 命令行安装（WinGet）

@@ -20,7 +20,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- 状态卡片：只保留状态、配置与启停总开关 -->
+        <!-- 顶部状态卡片：左侧状态主标题与订阅摘要，右侧系统代理 / TUN 双开关 + 管理订阅 -->
         <Border
             Grid.Row="0"
             Padding="20,16"
@@ -39,33 +39,62 @@
                     VerticalAlignment="Center"
                     Spacing="2">
                     <TextBlock
-                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
-                        Style="{StaticResource SubtitleTextBlockStyle}" />
+                        Text="{x:Bind ViewModel.StatusTitle, Mode=OneWay}"
+                        Style="{StaticResource TitleTextBlockStyle}" />
                     <TextBlock
                         Text="{x:Bind ViewModel.ConfigSummary, Mode=OneWay}"
                         ToolTipService.ToolTip="{x:Bind ViewModel.ConfigPath, Mode=OneWay}"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        Text="{x:Bind Loc.HomeSwitchHint, Mode=OneWay}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        TextWrapping="Wrap" />
                 </StackPanel>
 
+                <!-- 热重启期间不绑定 IsEnabled：开关保持可用，避免点击时灰白闪烁 -->
                 <StackPanel
                     Grid.Column="1"
                     Orientation="Horizontal"
                     Spacing="16"
                     VerticalAlignment="Center">
+
+                    <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock
+                            Text="{x:Bind Loc.HomeSystemProxy, Mode=OneWay}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            HorizontalAlignment="Center" />
+                        <ToggleSwitch
+                            MinWidth="0"
+                            HorizontalAlignment="Center"
+                            OnContent=""
+                            OffContent=""
+                            AutomationProperties.Name="{x:Bind Loc.HomeSystemProxyA11y, Mode=OneWay}"
+                            IsOn="{x:Bind ViewModel.IsSystemProxyEnabled, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock
+                            Text="{x:Bind Loc.HomeTunMode, Mode=OneWay}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            HorizontalAlignment="Center" />
+                        <ToggleSwitch
+                            MinWidth="0"
+                            HorizontalAlignment="Center"
+                            OnContent=""
+                            OffContent=""
+                            AutomationProperties.Name="{x:Bind Loc.HomeTunModeA11y, Mode=OneWay}"
+                            IsOn="{x:Bind ViewModel.IsTunEnabled, Mode=TwoWay}" />
+                    </StackPanel>
+
                     <Button
+                        VerticalAlignment="Center"
                         Content="{x:Bind Loc.HomeManageProfiles, Mode=OneWay}"
                         Click="OnManageProfilesClick" />
-
-                    <ToggleSwitch
-                        MinWidth="0"
-                        VerticalAlignment="Center"
-                        OnContent=""
-                        OffContent=""
-                        AutomationProperties.Name="{x:Bind Loc.HomeToggleCore, Mode=OneWay}"
-                        IsEnabled="{x:Bind ViewModel.IsToggleEnabled, Mode=OneWay}"
-                        IsOn="{x:Bind ViewModel.IsRunning, Mode=TwoWay}" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -235,102 +264,49 @@
             </Grid>
         </Border>
 
-        <!-- 代理模式 / 网络设置 -->
-        <Grid
+        <!-- 代理模式：通栏卡片（原 Network Settings 已并入顶部状态卡片） -->
+        <Border
             Grid.Row="3"
             Margin="0,12,0,0"
-            ColumnSpacing="12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.35*" />
-                <ColumnDefinition Width="1*" />
-            </Grid.ColumnDefinitions>
-
-            <Border
-                Grid.Column="0"
-                Padding="20,16"
-                CornerRadius="8"
-                BorderThickness="1"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="{x:Bind Loc.HomeProxyMode, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <TextBlock
-                        Text="{x:Bind Loc.HomeProxyModeHint, Mode=OneWay}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <RadioButton
-                            Content="{x:Bind Loc.HomeModeRule, Mode=OneWay}"
-                            MinWidth="0"
-                            GroupName="ClashMode"
-                            Tag="Rule"
-                            AutomationProperties.Name="{x:Bind Loc.HomeModeRuleA11y, Mode=OneWay}"
-                            Checked="OnClashModeChecked"
-                            IsChecked="{x:Bind IsMode(0, ViewModel.ClashModeIndex), Mode=OneWay}" />
-                        <RadioButton
-                            Content="{x:Bind Loc.HomeModeGlobal, Mode=OneWay}"
-                            MinWidth="0"
-                            GroupName="ClashMode"
-                            Tag="Global"
-                            AutomationProperties.Name="{x:Bind Loc.HomeModeGlobalA11y, Mode=OneWay}"
-                            Checked="OnClashModeChecked"
-                            IsChecked="{x:Bind IsMode(1, ViewModel.ClashModeIndex), Mode=OneWay}" />
-                        <RadioButton
-                            Content="{x:Bind Loc.HomeModeDirect, Mode=OneWay}"
-                            MinWidth="0"
-                            GroupName="ClashMode"
-                            Tag="Direct"
-                            AutomationProperties.Name="{x:Bind Loc.HomeModeDirectA11y, Mode=OneWay}"
-                            Checked="OnClashModeChecked"
-                            IsChecked="{x:Bind IsMode(2, ViewModel.ClashModeIndex), Mode=OneWay}" />
-                    </StackPanel>
+            Padding="20,16"
+            CornerRadius="8"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            <StackPanel Spacing="8">
+                <TextBlock Text="{x:Bind Loc.HomeProxyMode, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                <TextBlock
+                    Text="{x:Bind Loc.HomeProxyModeHint, Mode=OneWay}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <RadioButton
+                        Content="{x:Bind Loc.HomeModeRule, Mode=OneWay}"
+                        MinWidth="0"
+                        GroupName="ClashMode"
+                        Tag="Rule"
+                        AutomationProperties.Name="{x:Bind Loc.HomeModeRuleA11y, Mode=OneWay}"
+                        Checked="OnClashModeChecked"
+                        IsChecked="{x:Bind IsMode(0, ViewModel.ClashModeIndex), Mode=OneWay}" />
+                    <RadioButton
+                        Content="{x:Bind Loc.HomeModeGlobal, Mode=OneWay}"
+                        MinWidth="0"
+                        GroupName="ClashMode"
+                        Tag="Global"
+                        AutomationProperties.Name="{x:Bind Loc.HomeModeGlobalA11y, Mode=OneWay}"
+                        Checked="OnClashModeChecked"
+                        IsChecked="{x:Bind IsMode(1, ViewModel.ClashModeIndex), Mode=OneWay}" />
+                    <RadioButton
+                        Content="{x:Bind Loc.HomeModeDirect, Mode=OneWay}"
+                        MinWidth="0"
+                        GroupName="ClashMode"
+                        Tag="Direct"
+                        AutomationProperties.Name="{x:Bind Loc.HomeModeDirectA11y, Mode=OneWay}"
+                        Checked="OnClashModeChecked"
+                        IsChecked="{x:Bind IsMode(2, ViewModel.ClashModeIndex), Mode=OneWay}" />
                 </StackPanel>
-            </Border>
-
-            <Border
-                Grid.Column="1"
-                Padding="20,16"
-                CornerRadius="8"
-                BorderThickness="1"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="{x:Bind Loc.HomeNetworkSettings, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
-
-                    <Grid ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="{x:Bind Loc.HomeSystemProxy, Mode=OneWay}" VerticalAlignment="Center" />
-                        <ToggleSwitch
-                            Grid.Column="1"
-                            MinWidth="0"
-                            VerticalAlignment="Center"
-                            OnContent=""
-                            OffContent=""
-                            AutomationProperties.Name="{x:Bind Loc.HomeSystemProxyA11y, Mode=OneWay}"
-                            IsOn="{x:Bind ViewModel.IsSystemProxyEnabled, Mode=TwoWay}" />
-                    </Grid>
-
-                    <Grid ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="{x:Bind Loc.HomeTunMode, Mode=OneWay}" VerticalAlignment="Center" />
-                        <ToggleSwitch
-                            Grid.Column="1"
-                            MinWidth="0"
-                            VerticalAlignment="Center"
-                            OnContent=""
-                            OffContent=""
-                            AutomationProperties.Name="{x:Bind Loc.HomeTunModeA11y, Mode=OneWay}"
-                            IsOn="{x:Bind ViewModel.IsTunEnabled, Mode=TwoWay}" />
-                    </Grid>
-                </StackPanel>
-            </Border>
-        </Grid>
+            </StackPanel>
+        </Border>
 
 
         <!-- 网络连通性与出口信息（Fluent card） -->
