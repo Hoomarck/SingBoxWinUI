@@ -18,7 +18,7 @@
   #define IncludeCore 1
 #endif
 #ifndef AppVersion
-  #define AppVersion "1.1.0"
+  #define AppVersion "1.1.1"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\publish\SingBoxRunner"

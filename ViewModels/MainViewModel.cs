@@ -76,11 +76,14 @@ public partial class MainViewModel : ObservableObject
 
     private int _connectivityRunning;
 
-    private string _exitIpRaw = string.Empty;
+    /// <summary>国内直连（绕过系统代理）双栈结果。</summary>
+    private ChannelIpResult _directIps = ChannelIpResult.Empty;
 
-    private string _exitCountry = string.Empty;
+    /// <summary>代理出口（经本地 mixed 端口）双栈结果。</summary>
+    private ChannelIpResult _proxyIps = ChannelIpResult.Empty;
 
-    private string _exitIsp = string.Empty;
+    /// <summary>本次检测时内核是否在跑：决定代理侧是「未探测」还是「探测失败」。</summary>
+    private bool _proxyAvailable;
 
     private long _googleMs = -1;
 
@@ -95,8 +98,8 @@ public partial class MainViewModel : ObservableObject
         NotConnected,
         CoreStopped,
         Checking,
-        ViaProxy,
-        ViaDirect,
+        Updated,
+        Partial,
         Failed,
         Copied,
     }
@@ -314,10 +317,10 @@ public partial class MainViewModel : ObservableObject
     // ---- 主页「网络连通性与出口信息」卡片 ----
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExitIpText))]
-    [NotifyPropertyChangedFor(nameof(IpMaskGlyph))]
-    [NotifyPropertyChangedFor(nameof(IpMaskHint))]
     public partial bool IsIpMasked { get; set; } = true;
+
+    /// <summary>打码开关一改就要重算 8 个 IP 文本与提示符，统一走一次 RaiseConnectivityChanged。</summary>
+    partial void OnIsIpMaskedChanged(bool value) => RaiseConnectivityChanged();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanCheckConnectivity))]
@@ -325,44 +328,88 @@ public partial class MainViewModel : ObservableObject
 
     public bool CanCheckConnectivity => !IsCheckingConnectivity;
 
-    /// <summary>IPv4 隐藏中间两段（104.28.***.***）；IPv6 只保留前两组。</summary>
-    public string ExitIpText
+    // ---- 国内直连通道（不经代理） ----
+
+    public bool HasDirectIpv4 => _directIps.Ipv4 is not null;
+
+    public bool HasDirectIpv6 => _directIps.Ipv6 is not null;
+
+    public string DirectIpv4Text => FormatIpDisplay(_directIps.Ipv4?.Ip, IsIpMasked);
+
+    public string DirectIpv6Text => FormatIpDisplay(_directIps.Ipv6?.Ip, IsIpMasked);
+
+    public string DirectIpv4RegionText => FormatRegionDisplay(_directIps.Ipv4);
+
+    public string DirectIpv6RegionText => FormatRegionDisplay(_directIps.Ipv6);
+
+    // ---- 代理出口通道（经本地 mixed 端口） ----
+
+    public bool HasProxyIpv4 => _proxyIps.Ipv4 is not null;
+
+    public bool HasProxyIpv6 => _proxyIps.Ipv6 is not null;
+
+    public string ProxyIpv4Text => FormatIpDisplay(_proxyIps.Ipv4?.Ip, IsIpMasked);
+
+    public string ProxyIpv6Text => FormatIpDisplay(_proxyIps.Ipv6?.Ip, IsIpMasked);
+
+    public string ProxyIpv4RegionText => FormatRegionDisplay(_proxyIps.Ipv4);
+
+    public string ProxyIpv6RegionText => FormatRegionDisplay(_proxyIps.Ipv6);
+
+    /// <summary>本次检测内核没跑，代理侧是「未探测」而不是「探测失败」。</summary>
+    public bool ProxyUnavailable => !_proxyAvailable;
+
+    /// <summary>IPv4 隐藏中间两段（104.28.***.***）；IPv6 只保留前两组。空值统一显示 --。</summary>
+    private static string FormatIpDisplay(string? rawIp, bool masked)
+    {
+        if (string.IsNullOrWhiteSpace(rawIp))
+        {
+            return LocalizationService.Instance.ConnNoIp;
+        }
+
+        if (!masked)
+        {
+            return rawIp;
+        }
+
+        if (rawIp.Contains(':', StringComparison.Ordinal))
+        {
+            var groups = rawIp.Split(':');
+            return groups.Length > 2 ? $"{groups[0]}:{groups[1]}:****:****" : "****";
+        }
+
+        var parts = rawIp.Split('.');
+        return parts.Length == 4 ? $"{parts[0]}.{parts[1]}.***.***" : "***";
+    }
+
+    /// <summary>没有 IP 时不显示属地行；有 IP 但属地为空时显示「未知地区」。</summary>
+    private static string FormatRegionDisplay(ExitIpInfo? info) => info is null
+        ? string.Empty
+        : LocalizationService.Instance.ConnRegionText(info.Region, info.Isp);
+
+    /// <summary>全局 TUN 模式下底层直连会被内核整体接管，「国内直连」不再是物理直连，需要提示。</summary>
+    private bool IsGlobalTunActive => IsRunning && IsTunEnabled && string.Equals(ClashMode, "Global", StringComparison.OrdinalIgnoreCase);
+
+    public string ConnectivityHintText
     {
         get
         {
-            if (string.IsNullOrWhiteSpace(_exitIpRaw))
+            var text = _connectivityHint switch
             {
-                return LocalizationService.Instance.ConnNoIp;
-            }
+                ConnectivityHint.Checking => LocalizationService.Instance.ConnChecking,
+                ConnectivityHint.Updated => LocalizationService.Instance.ConnUpdated,
+                ConnectivityHint.Partial => LocalizationService.Instance.ConnPartial,
+                ConnectivityHint.Failed => LocalizationService.Instance.ConnFailed,
+                ConnectivityHint.Copied => LocalizationService.Instance.ConnCopied,
+                ConnectivityHint.CoreStopped => LocalizationService.Instance.ConnCoreStopped,
+                _ => LocalizationService.Instance.ConnNotConnected,
+            };
 
-            if (!IsIpMasked)
-            {
-                return _exitIpRaw;
-            }
-
-            if (_exitIpRaw.Contains(':', StringComparison.Ordinal))
-            {
-                var groups = _exitIpRaw.Split(':');
-                return groups.Length > 2 ? $"{groups[0]}:{groups[1]}:****:****" : "****";
-            }
-
-            var parts = _exitIpRaw.Split('.');
-            return parts.Length == 4 ? $"{parts[0]}.{parts[1]}.***.***" : "***";
+            return IsGlobalTunActive
+                ? $"{text} · {LocalizationService.Instance.ConnGlobalTunNote}"
+                : text;
         }
     }
-
-    public string ExitRegionText => LocalizationService.Instance.ConnRegionText(_exitCountry, _exitIsp);
-
-    public string ConnectivityHintText => _connectivityHint switch
-    {
-        ConnectivityHint.Checking => LocalizationService.Instance.ConnChecking,
-        ConnectivityHint.ViaProxy => LocalizationService.Instance.ConnViaProxy,
-        ConnectivityHint.ViaDirect => LocalizationService.Instance.ConnViaDirect,
-        ConnectivityHint.Failed => LocalizationService.Instance.ConnFailed,
-        ConnectivityHint.Copied => LocalizationService.Instance.ConnCopied,
-        ConnectivityHint.CoreStopped => LocalizationService.Instance.ConnCoreStopped,
-        _ => LocalizationService.Instance.ConnNotConnected,
-    };
 
     public string GoogleLatencyText => LocalizationService.Instance.ConnLatencyText(_googleMs);
 
@@ -444,10 +491,23 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ToggleIpMask() => IsIpMasked = !IsIpMasked;
 
+    /// <summary>
+    /// 复制指定格子的 IP。CommandParameter 传 "direct-v4" / "direct-v6" / "proxy-v4" / "proxy-v6"，
+    /// 四格共用一个命令，避免再长出四个只差一个字段的 RelayCommand。
+    /// </summary>
     [RelayCommand]
-    private void CopyExitIp()
+    private void CopyIp(string? target)
     {
-        if (string.IsNullOrWhiteSpace(_exitIpRaw))
+        var info = target switch
+        {
+            "direct-v4" => _directIps.Ipv4,
+            "direct-v6" => _directIps.Ipv6,
+            "proxy-v4" => _proxyIps.Ipv4,
+            "proxy-v6" => _proxyIps.Ipv6,
+            _ => null,
+        };
+
+        if (info is null || string.IsNullOrWhiteSpace(info.Ip))
         {
             return;
         }
@@ -455,13 +515,13 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var package = new DataPackage();
-            package.SetText(_exitIpRaw);
+            package.SetText(info.Ip);
             Clipboard.SetContent(package);
             SetConnectivityHint(ConnectivityHint.Copied);
         }
         catch (Exception ex)
         {
-            AppendLog($"[连通性] 复制出口 IP 失败：{ex.Message}");
+            AppendLog($"[连通性] 复制 IP 失败：{ex.Message}");
         }
     }
 
@@ -490,25 +550,43 @@ public partial class MainViewModel : ObservableObject
 
     private void ApplyConnectivityResult(ConnectivityResult result)
     {
-        _exitIpRaw = result.ExitIp?.Ip ?? string.Empty;
-        _exitCountry = result.ExitIp?.Country ?? string.Empty;
-        _exitIsp = result.ExitIp?.Isp ?? string.Empty;
+        _directIps = result.Direct;
+        _proxyIps = result.Proxy;
+        _proxyAvailable = result.ProxyAvailable;
         _googleMs = result.GoogleMs;
         _gitHubMs = result.GitHubMs;
         _cloudflareMs = result.CloudflareMs;
 
-        SetConnectivityHint(result.ExitIp is null
-            ? ConnectivityHint.Failed
-            : result.ViaProxy ? ConnectivityHint.ViaProxy : ConnectivityHint.ViaDirect);
+        // 内核没跑时代理侧根本没探测，别把「未探测」说成「检测失败」。
+        if (!result.ProxyAvailable)
+        {
+            SetConnectivityHint(result.Direct.HasIp ? ConnectivityHint.CoreStopped : ConnectivityHint.Failed);
+        }
+        else if (result.Direct.HasIp && result.Proxy.HasIp)
+        {
+            SetConnectivityHint(ConnectivityHint.Updated);
+        }
+        else if (result.Direct.HasIp || result.Proxy.HasIp)
+        {
+            SetConnectivityHint(ConnectivityHint.Partial);
+        }
+        else
+        {
+            SetConnectivityHint(ConnectivityHint.Failed);
+        }
+
         RaiseConnectivityChanged();
     }
 
+    /// <summary>
+    /// 内核停止：只清空代理侧与延迟胶囊，保留国内直连结果——
+    /// 直连本来就不依赖内核，清掉反而让用户以为断网了。
+    /// </summary>
     private void ResetConnectivityState()
     {
         _connectivityCts?.Cancel();
-        _exitIpRaw = string.Empty;
-        _exitCountry = string.Empty;
-        _exitIsp = string.Empty;
+        _proxyIps = ChannelIpResult.Empty;
+        _proxyAvailable = false;
         _googleMs = -1;
         _gitHubMs = -1;
         _cloudflareMs = -1;
@@ -524,8 +602,23 @@ public partial class MainViewModel : ObservableObject
 
     private void RaiseConnectivityChanged()
     {
-        OnPropertyChanged(nameof(ExitIpText));
-        OnPropertyChanged(nameof(ExitRegionText));
+        // 直连双栈
+        OnPropertyChanged(nameof(DirectIpv4Text));
+        OnPropertyChanged(nameof(DirectIpv6Text));
+        OnPropertyChanged(nameof(DirectIpv4RegionText));
+        OnPropertyChanged(nameof(DirectIpv6RegionText));
+        OnPropertyChanged(nameof(HasDirectIpv4));
+        OnPropertyChanged(nameof(HasDirectIpv6));
+
+        // 代理双栈
+        OnPropertyChanged(nameof(ProxyIpv4Text));
+        OnPropertyChanged(nameof(ProxyIpv6Text));
+        OnPropertyChanged(nameof(ProxyIpv4RegionText));
+        OnPropertyChanged(nameof(ProxyIpv6RegionText));
+        OnPropertyChanged(nameof(HasProxyIpv4));
+        OnPropertyChanged(nameof(HasProxyIpv6));
+        OnPropertyChanged(nameof(ProxyUnavailable));
+
         OnPropertyChanged(nameof(ConnectivityHintText));
         OnPropertyChanged(nameof(GoogleLatencyText));
         OnPropertyChanged(nameof(GitHubLatencyText));

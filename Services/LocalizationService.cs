@@ -252,6 +252,14 @@ public sealed class LocalizationService : ObservableObject
         ["ConnViaProxy"] = ("经本地代理通道", "Via local proxy"),
         ["ConnViaDirect"] = ("直连探测", "Direct connection"),
         ["ConnCopied"] = ("已复制出口 IP", "Exit IP copied"),
+        ["ConnUpdated"] = ("双通道已更新", "Both channels updated"),
+        ["ConnPartial"] = ("部分通道未返回", "Partial result"),
+        ["ConnDirectTitle"] = ("国内直连", "Direct (No Proxy)"),
+        ["ConnProxyTitle"] = ("代理出口", "Proxy Exit"),
+        ["ConnDirectTag"] = ("不经代理", "No proxy"),
+        ["ConnProxyTag"] = ("经代理", "Via proxy"),
+        ["ConnGlobalTunNote"] = ("全局 TUN：直连流量也由内核路由", "Global TUN: direct traffic is routed by the core"),
+        ["ConnProxyUnavailable"] = ("内核未运行，未探测", "Core not running, not probed"),
         ["ConnUnknownRegion"] = ("未知地区", "Unknown region"),
         ["ConnNoIp"] = ("--", "--"),
         ["ConnIpMaskA11y"] = ("切换 IP 显示", "Toggle IP visibility"),
@@ -349,6 +357,8 @@ public sealed class LocalizationService : ObservableObject
         "ConnCardTitle", "ConnExitIp", "ConnRegionIsp", "ConnChecking", "ConnRecheck", "ConnShowIp",
         "ConnHideIp", "ConnCopyIp", "ConnNotConnected", "ConnCoreStopped", "ConnFailed", "ConnTimeout",
         "ConnViaProxy", "ConnViaDirect", "ConnCopied", "ConnUnknownRegion", "ConnNoIp", "ConnIpMaskA11y",
+        "ConnUpdated", "ConnPartial", "ConnDirectTitle", "ConnProxyTitle", "ConnDirectTag", "ConnProxyTag",
+        "ConnGlobalTunNote", "ConnProxyUnavailable",
         "ConnLatencyA11y", "ConnGoogle", "ConnGithub", "ConnCloudflare", "SingBoxVersion", "KernelCardTitle", "KernelCurrentVersion",
         "KernelCheckUpdate", "KernelUpdateNow", "KernelChangelog", "KernelUpToDate", "KernelNotInstalled", "KernelChecking",
         "KernelCheckFailed", "KernelNotChecked", "KernelDownloading", "KernelInstalling", "KernelRestarting", "KernelUpdated",
@@ -1373,6 +1383,30 @@ public sealed class LocalizationService : ObservableObject
 
     /// <summary>已复制出口 IP</summary>
     public string ConnCopied => T(nameof(ConnCopied));
+
+    /// <summary>双通道已更新</summary>
+    public string ConnUpdated => T(nameof(ConnUpdated));
+
+    /// <summary>部分通道未返回</summary>
+    public string ConnPartial => T(nameof(ConnPartial));
+
+    /// <summary>国内直连</summary>
+    public string ConnDirectTitle => T(nameof(ConnDirectTitle));
+
+    /// <summary>代理出口</summary>
+    public string ConnProxyTitle => T(nameof(ConnProxyTitle));
+
+    /// <summary>不经代理</summary>
+    public string ConnDirectTag => T(nameof(ConnDirectTag));
+
+    /// <summary>经代理</summary>
+    public string ConnProxyTag => T(nameof(ConnProxyTag));
+
+    /// <summary>全局 TUN 提示</summary>
+    public string ConnGlobalTunNote => T(nameof(ConnGlobalTunNote));
+
+    /// <summary>内核未运行，未探测</summary>
+    public string ConnProxyUnavailable => T(nameof(ConnProxyUnavailable));
 
     /// <summary>未知地区</summary>
     public string ConnUnknownRegion => T(nameof(ConnUnknownRegion));

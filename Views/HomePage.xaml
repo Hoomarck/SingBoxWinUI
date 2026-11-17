@@ -309,7 +309,7 @@
         </Border>
 
 
-        <!-- 网络连通性与出口信息（Fluent card） -->
+        <!-- 网络连通性与出口信息（双通道 × 双栈，Fluent card） -->
         <Border
             Grid.Row="4"
             Margin="0,12,0,0"
@@ -318,28 +318,31 @@
             BorderThickness="1"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-            <Grid ColumnSpacing="20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <StackPanel Spacing="14">
 
-                <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center">
-                    <TextBlock
-                        Text="{x:Bind Loc.ConnCardTitle, Mode=OneWay}"
-                        Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <TextBlock
-                        Text="{x:Bind Loc.ConnExitIp, Mode=OneWay}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <!-- 头部：标题 + 状态副标题；右侧打码 / 进度 / 立即检测 -->
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                    <StackPanel Orientation="Horizontal" Spacing="6">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                         <TextBlock
-                            Text="{x:Bind ViewModel.ExitIpText, Mode=OneWay}"
-                            Style="{StaticResource SubtitleTextBlockStyle}"
-                            FontFamily="Consolas"
-                            VerticalAlignment="Center"
-                            IsTextSelectionEnabled="True" />
+                            Text="{x:Bind Loc.ConnCardTitle, Mode=OneWay}"
+                            Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.ConnectivityHintText, Mode=OneWay}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <StackPanel
+                        Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        VerticalAlignment="Center">
                         <Button
                             Width="32"
                             Height="32"
@@ -351,32 +354,6 @@
                             ToolTipService.ToolTip="{x:Bind ViewModel.IpMaskHint, Mode=OneWay}">
                             <FontIcon Glyph="{x:Bind ViewModel.IpMaskGlyph, Mode=OneWay}" FontSize="14" />
                         </Button>
-                        <Button
-                            Width="32"
-                            Height="32"
-                            Padding="0"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Command="{x:Bind ViewModel.CopyExitIpCommand, Mode=OneWay}"
-                            AutomationProperties.Name="{x:Bind Loc.ConnCopyIp, Mode=OneWay}"
-                            ToolTipService.ToolTip="{x:Bind Loc.ConnCopyIp, Mode=OneWay}">
-                            <FontIcon Glyph="&#xE8C8;" FontSize="14" />
-                        </Button>
-                    </StackPanel>
-
-                    <TextBlock
-                        Text="{x:Bind ViewModel.ExitRegionText, Mode=OneWay}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        TextTrimming="CharacterEllipsis" />
-                    <TextBlock
-                        Text="{x:Bind ViewModel.ConnectivityHintText, Mode=OneWay}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                         <ProgressRing
                             Width="16"
                             Height="16"
@@ -387,62 +364,303 @@
                             Command="{x:Bind ViewModel.CheckConnectivityCommand, Mode=OneWay}"
                             IsEnabled="{x:Bind ViewModel.CanCheckConnectivity, Mode=OneWay}" />
                     </StackPanel>
+                </Grid>
 
-                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Border
-                            Padding="10,4"
-                            CornerRadius="4"
-                            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                            AutomationProperties.Name="{x:Bind Loc.ConnLatencyA11y, Mode=OneWay}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock
-                                    Text="{x:Bind Loc.ConnGoogle, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <TextBlock
-                                    Text="{x:Bind ViewModel.GoogleLatencyText, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    FontWeight="SemiBold"
-                                    Foreground="{x:Bind ViewModel.GoogleLatencyBrush, Mode=OneWay}" />
-                            </StackPanel>
-                        </Border>
+                <!-- 延迟胶囊（经代理探测） -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Border
+                        Padding="10,4"
+                        CornerRadius="4"
+                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                        AutomationProperties.Name="{x:Bind Loc.ConnLatencyA11y, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock
+                                Text="{x:Bind Loc.ConnGoogle, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.GoogleLatencyText, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                FontWeight="SemiBold"
+                                Foreground="{x:Bind ViewModel.GoogleLatencyBrush, Mode=OneWay}" />
+                        </StackPanel>
+                    </Border>
 
-                        <Border
-                            Padding="10,4"
-                            CornerRadius="4"
-                            Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock
-                                    Text="{x:Bind Loc.ConnGithub, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <TextBlock
-                                    Text="{x:Bind ViewModel.GitHubLatencyText, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    FontWeight="SemiBold"
-                                    Foreground="{x:Bind ViewModel.GitHubLatencyBrush, Mode=OneWay}" />
-                            </StackPanel>
-                        </Border>
+                    <Border Padding="10,4" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock
+                                Text="{x:Bind Loc.ConnGithub, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.GitHubLatencyText, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                FontWeight="SemiBold"
+                                Foreground="{x:Bind ViewModel.GitHubLatencyBrush, Mode=OneWay}" />
+                        </StackPanel>
+                    </Border>
 
-                        <Border
-                            Padding="10,4"
-                            CornerRadius="4"
-                            Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock
-                                    Text="{x:Bind Loc.ConnCloudflare, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <TextBlock
-                                    Text="{x:Bind ViewModel.CloudflareLatencyText, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    FontWeight="SemiBold"
-                                    Foreground="{x:Bind ViewModel.CloudflareLatencyBrush, Mode=OneWay}" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
+                    <Border Padding="10,4" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock
+                                Text="{x:Bind Loc.ConnCloudflare, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.CloudflareLatencyText, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                FontWeight="SemiBold"
+                                Foreground="{x:Bind ViewModel.CloudflareLatencyBrush, Mode=OneWay}" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
-            </Grid>
+
+                <!-- 双通道对比：两列等宽 -->
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 左：国内直连（不经代理） -->
+                    <Border
+                        Grid.Column="0"
+                        Padding="14,12"
+                        CornerRadius="6"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                        <StackPanel Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock
+                                    Text="{x:Bind Loc.ConnDirectTitle, Mode=OneWay}"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    VerticalAlignment="Center" />
+                                <Border
+                                    Padding="6,1"
+                                    CornerRadius="4"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{x:Bind Loc.ConnDirectTag, Mode=OneWay}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                </Border>
+                            </StackPanel>
+
+                            <!-- 直连 IPv4 -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="38" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="IPv4"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                    VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.DirectIpv4Text, Mode=OneWay}"
+                                        FontFamily="Consolas"
+                                        FontSize="13"
+                                        IsTextSelectionEnabled="True"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.DirectIpv4Text, Mode=OneWay}" />
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.DirectIpv4RegionText, Mode=OneWay}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        TextTrimming="CharacterEllipsis"
+                                        Visibility="{x:Bind ViewModel.HasDirectIpv4, Mode=OneWay}" />
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="2"
+                                    Width="28"
+                                    Height="28"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    IsEnabled="{x:Bind ViewModel.HasDirectIpv4, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.CopyIpCommand, Mode=OneWay}"
+                                    CommandParameter="direct-v4"
+                                    AutomationProperties.Name="{x:Bind Loc.ConnCopyIp, Mode=OneWay}"
+                                    ToolTipService.ToolTip="{x:Bind Loc.ConnCopyIp, Mode=OneWay}">
+                                    <FontIcon Glyph="&#xE8C8;" FontSize="12" />
+                                </Button>
+                            </Grid>
+
+                            <!-- 直连 IPv6（无公网 v6 时安静显示占位符） -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="38" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="IPv6"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                    VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.DirectIpv6Text, Mode=OneWay}"
+                                        FontFamily="Consolas"
+                                        FontSize="13"
+                                        IsTextSelectionEnabled="True"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.DirectIpv6Text, Mode=OneWay}" />
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.DirectIpv6RegionText, Mode=OneWay}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        TextTrimming="CharacterEllipsis"
+                                        Visibility="{x:Bind ViewModel.HasDirectIpv6, Mode=OneWay}" />
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="2"
+                                    Width="28"
+                                    Height="28"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    IsEnabled="{x:Bind ViewModel.HasDirectIpv6, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.CopyIpCommand, Mode=OneWay}"
+                                    CommandParameter="direct-v6"
+                                    AutomationProperties.Name="{x:Bind Loc.ConnCopyIp, Mode=OneWay}"
+                                    ToolTipService.ToolTip="{x:Bind Loc.ConnCopyIp, Mode=OneWay}">
+                                    <FontIcon Glyph="&#xE8C8;" FontSize="12" />
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 右：代理出口（经代理） -->
+                    <Border
+                        Grid.Column="1"
+                        Padding="14,12"
+                        CornerRadius="6"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                        <StackPanel Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock
+                                    Text="{x:Bind Loc.ConnProxyTitle, Mode=OneWay}"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    VerticalAlignment="Center" />
+                                <Border
+                                    Padding="6,1"
+                                    CornerRadius="4"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{x:Bind Loc.ConnProxyTag, Mode=OneWay}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                </Border>
+                            </StackPanel>
+
+                            <!-- 代理 IPv4 -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="38" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="IPv4"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                    VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.ProxyIpv4Text, Mode=OneWay}"
+                                        FontFamily="Consolas"
+                                        FontSize="13"
+                                        IsTextSelectionEnabled="True"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.ProxyIpv4Text, Mode=OneWay}" />
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.ProxyIpv4RegionText, Mode=OneWay}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        TextTrimming="CharacterEllipsis"
+                                        Visibility="{x:Bind ViewModel.HasProxyIpv4, Mode=OneWay}" />
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="2"
+                                    Width="28"
+                                    Height="28"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    IsEnabled="{x:Bind ViewModel.HasProxyIpv4, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.CopyIpCommand, Mode=OneWay}"
+                                    CommandParameter="proxy-v4"
+                                    AutomationProperties.Name="{x:Bind Loc.ConnCopyIp, Mode=OneWay}"
+                                    ToolTipService.ToolTip="{x:Bind Loc.ConnCopyIp, Mode=OneWay}">
+                                    <FontIcon Glyph="&#xE8C8;" FontSize="12" />
+                                </Button>
+                            </Grid>
+
+                            <!-- 代理 IPv6 -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="38" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="IPv6"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                    VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.ProxyIpv6Text, Mode=OneWay}"
+                                        FontFamily="Consolas"
+                                        FontSize="13"
+                                        IsTextSelectionEnabled="True"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.ProxyIpv6Text, Mode=OneWay}" />
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.ProxyIpv6RegionText, Mode=OneWay}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        TextTrimming="CharacterEllipsis"
+                                        Visibility="{x:Bind ViewModel.HasProxyIpv6, Mode=OneWay}" />
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="2"
+                                    Width="28"
+                                    Height="28"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    IsEnabled="{x:Bind ViewModel.HasProxyIpv6, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.CopyIpCommand, Mode=OneWay}"
+                                    CommandParameter="proxy-v6"
+                                    AutomationProperties.Name="{x:Bind Loc.ConnCopyIp, Mode=OneWay}"
+                                    ToolTipService.ToolTip="{x:Bind Loc.ConnCopyIp, Mode=OneWay}">
+                                    <FontIcon Glyph="&#xE8C8;" FontSize="12" />
+                                </Button>
+                            </Grid>
+
+                            <TextBlock
+                                Text="{x:Bind Loc.ConnProxyUnavailable, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Visibility="{x:Bind ViewModel.ProxyUnavailable, Mode=OneWay}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
         </Border>
 
         </Grid>
