@@ -17,7 +17,7 @@
       * 所有清理动作只发生在 publish\SingBoxRunner 暂存目录内。
 
 .PARAMETER Version
-    版本号，用于归档文件名（默认 1.1.1）。
+    版本号，用于归档文件名（默认 1.1.2）。
 
 .PARAMETER OnlyRequiredRuleSets
     默认把 rulesets\ 下全部 .json 原样打包，保证解压后与源码一致。
@@ -33,11 +33,11 @@
     powershell -ExecutionPolicy Bypass -File .\publish.ps1
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File .\publish.ps1 -Version 1.1.1 -IncludeAllPublicRuleSets
+    powershell -ExecutionPolicy Bypass -File .\publish.ps1 -Version 1.1.2 -IncludeAllPublicRuleSets
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = "1.1.1",
+    [string]$Version = "1.1.2",
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     # 未安装 Inno Setup 时可显式传 ISCC.exe 路径（例如便携解压出来的那份）
@@ -473,8 +473,28 @@ if (-not (Test-Path $kernel)) {
 }
 
 # -D 指定工作目录：配置里的 ../rulesets/ 相对 Core\ 解析
-$checkOutput = & $kernel check -c (Join-Path $staging "Core\config.json") -D (Join-Path $staging "Core") 2>&1
-$checkExit = $LASTEXITCODE
+$prevErrPref = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+    $checkOutput = & $kernel check -c (Join-Path $staging "Core\config.json") -D (Join-Path $staging "Core") 2>&1
+    $checkExit = $LASTEXITCODE
+
+    # 某些受限工作区目录 ACL 会导致 Go 初始化 ole32.dll 失败；改用临时副本对同一份打包文件做校验
+    if ($checkExit -ne 0 -and (($checkOutput | Out-String) -match "panic:.*DLL")) {
+        $tempKernel = Join-Path $env:TEMP ("sing-box-check-" + [guid]::NewGuid().ToString("N").Substring(0, 8) + ".exe")
+        try {
+            Copy-Item $kernel $tempKernel -Force
+            $checkOutput = & $tempKernel check -c (Join-Path $staging "Core\config.json") -D (Join-Path $staging "Core") 2>&1
+            $checkExit = $LASTEXITCODE
+        }
+        finally {
+            Remove-BuildFile $tempKernel
+        }
+    }
+}
+finally {
+    $ErrorActionPreference = $prevErrPref
+}
 
 if ($checkExit -ne 0) {
     Write-Host ($checkOutput | Out-String) -ForegroundColor Red

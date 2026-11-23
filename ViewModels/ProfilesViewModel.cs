@@ -322,19 +322,27 @@ public partial class ProfilesViewModel : ObservableObject
 
         if (!enabled)
         {
-            StatusMessage = $"{label}已保存（当前未启用）。";
+            StatusMessage = LocalizationService.Instance.Say(
+                $"{label}已保存（当前未启用）。",
+                $"{label} saved (currently disabled).");
             return;
         }
 
         if (!_main.IsRunning)
         {
-            StatusMessage = $"{label}已保存，将在下次启动内核时生效。";
+            StatusMessage = LocalizationService.Instance.Say(
+                $"{label}已保存，将在下次启动内核时生效。",
+                $"{label} saved; takes effect the next time the core starts.");
             return;
         }
 
-        StatusMessage = $"{label}已保存，正在重启内核…";
+        StatusMessage = LocalizationService.Instance.Say(
+            $"{label}已保存，正在重启内核…",
+            $"{label} saved; restarting the core...");
         await _main.RestartCoreAsync($"[状态] {label}已更新，正在重启内核以应用...");
-        StatusMessage = $"{label}已保存并生效。";
+        StatusMessage = LocalizationService.Instance.Say(
+            $"{label}已保存并生效。",
+            $"{label} saved and applied.");
     }
 
     private async Task ApplyMixinToggleAsync(bool enabled, bool isPre)
@@ -343,13 +351,19 @@ public partial class ProfilesViewModel : ObservableObject
 
         if (!_main.IsRunning)
         {
-            StatusMessage = $"{label}已{(enabled ? "启用" : "关闭")}，将在下次启动内核时生效。";
+            StatusMessage = LocalizationService.Instance.Say(
+                $"{label}已{(enabled ? "启用" : "关闭")}，将在下次启动内核时生效。",
+                $"{label} {(enabled ? "enabled" : "disabled")}; takes effect the next time the core starts.");
             return;
         }
 
-        StatusMessage = $"正在重启内核以{(enabled ? "应用" : "移除")}{label}…";
+        StatusMessage = LocalizationService.Instance.Say(
+            $"正在重启内核以{(enabled ? "应用" : "移除")}{label}…",
+            $"Restarting the core to {(enabled ? "apply" : "remove")} {label}...");
         await _main.RestartCoreAsync($"[状态] 正在重启内核以{(enabled ? "应用" : "移除")}{label}...");
-        StatusMessage = $"{label}已{(enabled ? "启用" : "关闭")}并生效。";
+        StatusMessage = LocalizationService.Instance.Say(
+            $"{label}已{(enabled ? "启用" : "关闭")}并生效。",
+            $"{label} {(enabled ? "enabled" : "disabled")} and applied.");
     }
 
     private void OnActiveProfileUpdated(object? sender, ProfileItem item)

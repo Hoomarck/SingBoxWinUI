@@ -126,6 +126,9 @@ public partial class MainViewModel : ObservableObject
     /// <summary>最近一次成功下发的模式，避免控件重复触发时重复 PATCH。</summary>
     private string? _lastAppliedMode;
 
+    /// <summary>内核启动校验/模式切换的取消源，避免旧任务覆盖新选择。</summary>
+    private CancellationTokenSource? _modeSyncCts;
+
     /// <summary>流量/内存长连接的取消源。</summary>
     private CancellationTokenSource? _telemetryCts;
 
@@ -961,11 +964,12 @@ public partial class MainViewModel : ObservableObject
 
         if (!IsRunning)
         {
+            CancelClashModeSync();
             AppendLog($"[模式] 已设为：{ClashModeDisplay}（将在下次启动内核时生效）");
             return;
         }
 
-        _ = ApplyClashModeAsync();
+        StartClashModeSync(_runEpoch, syncFromStartup: false);
     }
 
     /// <summary>托盘菜单用：切换系统代理偏好。</summary>
@@ -1040,10 +1044,52 @@ public partial class MainViewModel : ObservableObject
         SetSystemProxyFromCode(false);
     }
 
-    private async Task ApplyClashModeAsync()
+    private void CancelClashModeSync()
+    {
+        var cts = Interlocked.Exchange(ref _modeSyncCts, null);
+        if (cts is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cts.Cancel();
+        }
+        catch (Exception)
+        {
+            // 已释放等，忽略
+        }
+    }
+
+    private void StartClashModeSync(int expectedEpoch, bool syncFromStartup)
+    {
+        var cts = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _modeSyncCts, cts);
+        if (previous is not null)
+        {
+            try
+            {
+                previous.Cancel();
+            }
+            catch (Exception)
+            {
+                // 已释放等，忽略
+            }
+        }
+
+        _ = SyncClashModeAsync(expectedEpoch, ClashMode, ClashModeDisplay, syncFromStartup, cts.Token);
+    }
+
+    private async Task SyncClashModeAsync(
+        int expectedEpoch,
+        string targetMode,
+        string targetDisplay,
+        bool syncFromStartup,
+        CancellationToken ct)
     {
         // 单选控件可能连发两次变更，已经下发过的模式直接跳过
-        if (string.Equals(_lastAppliedMode, ClashMode, StringComparison.Ordinal))
+        if (!syncFromStartup && string.Equals(_lastAppliedMode, targetMode, StringComparison.Ordinal))
         {
             return;
         }
@@ -1054,23 +1100,67 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        for (var attempt = 0; attempt < 5; attempt++)
+        // 启动同步需要等内核加载规则集并打开 clash_api 端口，窗口放宽到 5 秒
+        var maxAttempts = syncFromStartup ? 25 : 5;
+        var retryDelayMs = syncFromStartup ? 200 : 300;
+        var expectedApiMode = ClashApiService.ToApiMode(targetMode);
+
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
-            try
+            if (ct.IsCancellationRequested || _isShutdown || expectedEpoch != _runEpoch || !_service.IsRunning)
             {
-                await api.SetClashModeAsync(ClashMode);
-                _lastAppliedMode = ClashMode;
-                AppendLog($"[模式] 已切换至：{ClashModeDisplay}");
                 return;
             }
-            catch (Exception) when (attempt < 4)
+
+            try
             {
-                // clash_api 可能还没监听，稍等重试
-                await Task.Delay(300);
+                if (syncFromStartup)
+                {
+                    var actualMode = await api.GetClashModeAsync(ct);
+                    if (ct.IsCancellationRequested || expectedEpoch != _runEpoch)
+                    {
+                        return;
+                    }
+
+                    if (string.Equals(actualMode, expectedApiMode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _lastAppliedMode = targetMode;
+                        return;
+                    }
+
+                    await api.SetClashModeAsync(targetMode, ct);
+                    _lastAppliedMode = targetMode;
+                    AppendLog(string.IsNullOrEmpty(actualMode)
+                        ? $"[模式] 已同步内核代理模式为：{targetDisplay}"
+                        : $"[模式] 检测到缓存残留模式（{actualMode}），已同步为：{targetDisplay}");
+                    return;
+                }
+
+                await api.SetClashModeAsync(targetMode, ct);
+                _lastAppliedMode = targetMode;
+                AppendLog($"[模式] 已切换至：{targetDisplay}");
+                return;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception) when (attempt < maxAttempts - 1)
+            {
+                try
+                {
+                    await Task.Delay(retryDelayMs, ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
             }
             catch (Exception ex)
             {
-                AppendLog($"[错误] 切换代理模式失败：{ex.Message}");
+                AppendLog(syncFromStartup
+                    ? $"[警告] 启动后同步代理模式失败：{ex.Message}"
+                    : $"[错误] 切换代理模式失败：{ex.Message}");
                 return;
             }
         }
@@ -1448,6 +1538,8 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        CancelClashModeSync();
+        _lastAppliedMode = null;
         StopTelemetry();
         _isRestarting = true;
 
@@ -1605,6 +1697,8 @@ public partial class MainViewModel : ObservableObject
         _connectivityCts?.Cancel();
 
         // 先停遥测：否则内核被杀后 /traffic 会每秒重连，退出期留下幽灵任务
+        CancelClashModeSync();
+        _lastAppliedMode = null;
         StopTelemetry();
 
         // 退出前一定要关掉系统代理，否则浏览器会指向一个已经没人监听的端口
@@ -1974,8 +2068,10 @@ public partial class MainViewModel : ObservableObject
         // 新一代内核诞生：之前那代的 Exited 事件全部作废
         _runEpoch++;
 
-        // 配置里的 default_mode 就是当前模式，启动后内核已处于该模式
-        _lastAppliedMode = ClashMode;
+        // sing-box 启用 cache_file 时会从 cache.db 恢复上次的模式并忽略 default_mode，
+        // 不能假定启动后即处于 ClashMode，必须在 Clash API 就绪后核对并按需同步。
+        _lastAppliedMode = null;
+        StartClashModeSync(_runEpoch, syncFromStartup: true);
 
         _settings.Current.LastCoreRunning = true;
         _settings.Save();
@@ -2023,6 +2119,8 @@ public partial class MainViewModel : ObservableObject
         try
         {
             // 先收掉长连接，避免内核退出后流还在重连
+            CancelClashModeSync();
+            _lastAppliedMode = null;
             StopTelemetry();
 
             // 先关系统代理再停内核，避免中间出现"代理指向死端口"的窗口。
@@ -2316,6 +2414,8 @@ public partial class MainViewModel : ObservableObject
 
         // 内核已经没了：先把长连接和系统代理收掉，再回写运行状态。
         // 少了这一步，崩溃退出后浏览器会一直指向死端口，/traffic 还会每秒重连。
+        CancelClashModeSync();
+        _lastAppliedMode = null;
         StopTelemetry();
 
         if (willRetry)
@@ -2361,6 +2461,8 @@ public partial class MainViewModel : ObservableObject
     private void Fail(string message)
     {
         AppendLog($"[错误] {message}");
+        CancelClashModeSync();
+        _lastAppliedMode = null;
 
         // 启动/重启失败时内核已经不在了：系统代理必须立刻摘掉，
         // 否则浏览器会一直指向一个没人监听的端口。

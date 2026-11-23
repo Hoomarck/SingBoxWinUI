@@ -346,94 +346,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 高级与目录 -->
-                <Border
-                    Padding="20,16"
-                    CornerRadius="8"
-                    BorderThickness="1"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <StackPanel Spacing="14">
-                        <TextBlock Text="{x:Bind Loc.SetSectionAdvanced, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
-
-                        <!-- sing-box 内核版本 / 检测与更新：与下方「打开目录」按钮右对齐 -->
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Column="0" Spacing="2" HorizontalAlignment="Left">
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="{x:Bind Loc.SingBoxVersion, Mode=OneWay}" />
-                                    <TextBlock
-                                        Text="{x:Bind ViewModel.KernelVersionText, Mode=OneWay}"
-                                        Style="{StaticResource BodyStrongTextBlockStyle}" />
-                                </StackPanel>
-                                <TextBlock
-                                    Text="{x:Bind ViewModel.KernelStatusText, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
-
-                            <StackPanel
-                                Grid.Column="1"
-                                Orientation="Horizontal"
-                                Spacing="8"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center">
-                                <Button
-                                    Content="{x:Bind Loc.KernelCheckUpdate, Mode=OneWay}"
-                                    Command="{x:Bind ViewModel.CheckKernelUpdateCommand, Mode=OneWay}"
-                                    IsEnabled="{x:Bind ViewModel.KernelButtonsEnabled, Mode=OneWay}" />
-                                <Button
-                                    Content="{x:Bind Loc.KernelUpdateNow, Mode=OneWay}"
-                                    Style="{StaticResource AccentButtonStyle}"
-                                    Click="OnUpdateKernelClick"
-                                    Visibility="{x:Bind ViewModel.ShowKernelUpdate, Mode=OneWay}" />
-                                <HyperlinkButton
-                                    Content="{x:Bind Loc.KernelChangelog, Mode=OneWay}"
-                                    NavigateUri="{x:Bind ViewModel.KernelReleaseUri, Mode=OneWay}"
-                                    Visibility="{x:Bind ViewModel.ShowKernelChangelog, Mode=OneWay}" />
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- 仅在下载/换核时展开；平时 Collapsed -->
-                        <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.KernelProgressVisibility, Mode=OneWay}">
-                            <ProgressBar
-                                Minimum="0"
-                                Maximum="100"
-                                Value="{x:Bind ViewModel.KernelProgress, Mode=OneWay}"
-                                AutomationProperties.Name="{x:Bind Loc.KernelDownloading, Mode=OneWay}" />
-                            <TextBlock
-                                Text="{x:Bind ViewModel.KernelProgressText, Mode=OneWay}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </StackPanel>
-
-                        <Grid ColumnSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Spacing="2" HorizontalAlignment="Left">
-                                <TextBlock Text="{x:Bind Loc.SetCoreDirectory, Mode=OneWay}" />
-                                <TextBlock
-                                    Text="{x:Bind Loc.SetCoreDirectoryHint, Mode=OneWay}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                            <Button
-                                Grid.Column="1"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
-                                Content="{x:Bind Loc.SetOpenDirectory, Mode=OneWay}"
-                                Command="{x:Bind ViewModel.OpenCoreFolderCommand, Mode=OneWay}" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
                 <!-- 规则集管理与更新 -->
                 <Border
                     Padding="20,16"
@@ -797,17 +709,15 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 关于 / 客户端更新（设置页最底部） -->
+                <!-- 关于 / 客户端与内核更新 / 配置目录（设置页最底部合并大卡片） -->
                 <Border
                     Padding="20,16"
                     CornerRadius="8"
                     BorderThickness="1"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <StackPanel Spacing="12">
-                        <TextBlock
-                            Text="{x:Bind Loc.AboutCardTitle, Mode=OneWay}"
-                            Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="{x:Bind Loc.AboutCardTitle, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" />
 
                         <!-- 第一行：应用名 / 版本徽章 / 更新状态 + 右侧操作 -->
                         <Grid ColumnSpacing="16">
@@ -885,6 +795,86 @@
                                 OffContent=""
                                 AutomationProperties.Name="{x:Bind Loc.AboutAutoCheck, Mode=OneWay}"
                                 IsOn="{x:Bind ViewModel.AutoCheckAppUpdate, Mode=TwoWay}" />
+                        </Grid>
+
+                        <!-- 客户端 / 内核与目录分区 -->
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                        <!-- 第三行：sing-box 内核版本 / 检测与更新（原 Advanced 卡片原样迁入） -->
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Spacing="2" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Loc.SingBoxVersion, Mode=OneWay}" />
+                                    <TextBlock
+                                        Text="{x:Bind ViewModel.KernelVersionText, Mode=OneWay}"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Text="{x:Bind ViewModel.KernelStatusText, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                                <Button
+                                    Content="{x:Bind Loc.KernelCheckUpdate, Mode=OneWay}"
+                                    Command="{x:Bind ViewModel.CheckKernelUpdateCommand, Mode=OneWay}"
+                                    IsEnabled="{x:Bind ViewModel.KernelButtonsEnabled, Mode=OneWay}" />
+                                <Button
+                                    Content="{x:Bind Loc.KernelUpdateNow, Mode=OneWay}"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="OnUpdateKernelClick"
+                                    Visibility="{x:Bind ViewModel.ShowKernelUpdate, Mode=OneWay}" />
+                                <HyperlinkButton
+                                    Content="{x:Bind Loc.KernelChangelog, Mode=OneWay}"
+                                    NavigateUri="{x:Bind ViewModel.KernelReleaseUri, Mode=OneWay}"
+                                    Visibility="{x:Bind ViewModel.ShowKernelChangelog, Mode=OneWay}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 仅在下载/换核时展开；平时 Collapsed -->
+                        <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.KernelProgressVisibility, Mode=OneWay}">
+                            <ProgressBar
+                                Minimum="0"
+                                Maximum="100"
+                                Value="{x:Bind ViewModel.KernelProgress, Mode=OneWay}"
+                                AutomationProperties.Name="{x:Bind Loc.KernelDownloading, Mode=OneWay}" />
+                            <TextBlock
+                                Text="{x:Bind ViewModel.KernelProgressText, Mode=OneWay}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+
+                        <!-- 第四行：Core 配置目录入口（原 Advanced 卡片原样迁入） -->
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2" HorizontalAlignment="Left">
+                                <TextBlock Text="{x:Bind Loc.SetCoreDirectory, Mode=OneWay}" />
+                                <TextBlock
+                                    Text="{x:Bind Loc.SetCoreDirectoryHint, Mode=OneWay}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="1"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Content="{x:Bind Loc.SetOpenDirectory, Mode=OneWay}"
+                                Command="{x:Bind ViewModel.OpenCoreFolderCommand, Mode=OneWay}" />
                         </Grid>
                     </StackPanel>
                 </Border>

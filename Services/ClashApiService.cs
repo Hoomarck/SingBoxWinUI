@@ -83,6 +83,24 @@ public sealed class ClashApiService : IDisposable
         _ => "rule",
     };
 
+    /// <summary>读取当前内核实际生效的代理模式（GET /configs 的 mode 字段）。</summary>
+    public async Task<string?> GetClashModeAsync(CancellationToken ct = default)
+    {
+        using var response = await _http.GetAsync($"{_baseUrl}/configs", ct);
+        response.EnsureSuccessStatusCode();
+
+        var text = await response.Content.ReadAsStringAsync(ct);
+        using var document = JsonDocument.Parse(text);
+        if (document.RootElement.ValueKind == JsonValueKind.Object
+            && document.RootElement.TryGetProperty("mode", out var mode)
+            && mode.ValueKind == JsonValueKind.String)
+        {
+            return mode.GetString();
+        }
+
+        return null;
+    }
+
     /// <summary>切换代理模式（PATCH /configs）。</summary>
     public async Task SetClashModeAsync(string mode, CancellationToken ct = default)
     {

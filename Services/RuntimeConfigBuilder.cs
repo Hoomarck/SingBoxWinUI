@@ -88,11 +88,17 @@ public static class RuntimeConfigBuilder
             var inbounds = root["inbounds"] as JsonArray ?? GetOrCreateArray(root, "inbounds");
 
             // GUI 拥有语义：TUN 开关开着，配置里的 tun 入站就由本程序决定，
-            // 已有则整体替换为设置页里的参数
-            var replaced = ReplaceTunInbound(inbounds, options.Tun, options.EnableIpv6);
-            notes.Add(replaced > 0
-                ? $"已用设置页参数替换现有 TUN 入站（移除 {replaced} 个）"
+            // 已有则整体替换为设置页里的参数；若原入站 tag 不是 tun-in（例如订阅常用的 "tun"），
+            // 同步更新规则里的 inbound 引用，避免分流/DNS 规则悄悄失效。
+            var replacedTags = ReplaceTunInbound(inbounds, options.Tun, options.EnableIpv6);
+            var rewritten = RewriteInboundTagReferences(root, replacedTags, TunTag);
+            notes.Add(replacedTags.Count > 0
+                ? $"已用设置页参数替换现有 TUN 入站（移除 {replacedTags.Count} 个）"
                 : $"已注入 TUN 入站（{TunTag}）");
+            if (rewritten > 0)
+            {
+                notes.Add($"已将 {rewritten} 条规则的 inbound 引用由旧 TUN tag 迁移为 {TunTag}");
+            }
         }
         else if (root["inbounds"] is JsonArray inbounds)
         {
@@ -1504,10 +1510,10 @@ public static class RuntimeConfigBuilder
         return File.Exists(byFileName) ? Path.GetFullPath(byFileName) : null;
     }
 
-    /// <summary>删除所有 tun 入站，并在原位置插入规范对象。返回被移除的数量。</summary>
-    private static int ReplaceTunInbound(JsonArray inbounds, TunSettings tun, bool enableIpv6)
+    /// <summary>删除所有 tun 入站，并在原位置插入规范对象。返回被移除的入站 tag 列表。</summary>
+    private static List<string> ReplaceTunInbound(JsonArray inbounds, TunSettings tun, bool enableIpv6)
     {
-        var removed = 0;
+        var removedTags = new List<string>();
         var firstIndex = -1;
 
         // 从后往前删，下标不会失效；最后一次赋值即最早那个 tun 的位置
@@ -1518,13 +1524,99 @@ public static class RuntimeConfigBuilder
                 continue;
             }
 
+            if (inbounds[i] is JsonObject obj && GetString(obj, "tag") is { Length: > 0 } oldTag)
+            {
+                removedTags.Add(oldTag);
+            }
+            else
+            {
+                removedTags.Add(string.Empty);
+            }
+
             inbounds.RemoveAt(i);
             firstIndex = i;
-            removed++;
         }
 
         inbounds.Insert(firstIndex < 0 ? inbounds.Count : firstIndex, CreateTunInbound(tun, enableIpv6));
-        return removed;
+        return removedTags;
+    }
+
+    /// <summary>把 dns.rules / route.rules 里引用旧 TUN tag 的 inbound 条件迁移到新 tag。</summary>
+    private static int RewriteInboundTagReferences(
+        JsonObject root,
+        IReadOnlyCollection<string> oldTags,
+        string newTag)
+    {
+        var legacyTags = oldTags
+            .Where(tag => !string.IsNullOrEmpty(tag) && !string.Equals(tag, newTag, StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+
+        if (legacyTags.Count == 0)
+        {
+            return 0;
+        }
+
+        var rewritten = 0;
+
+        foreach (var sectionName in new[] { "dns", "route" })
+        {
+            if (root[sectionName] is not JsonObject section || section["rules"] is not JsonArray rules)
+            {
+                continue;
+            }
+
+            foreach (var rule in rules.OfType<JsonObject>())
+            {
+                var inboundNode = rule["inbound"];
+                if (inboundNode is JsonValue single && single.TryGetValue<string>(out var singleTag))
+                {
+                    if (legacyTags.Contains(singleTag))
+                    {
+                        rule["inbound"] = newTag;
+                        rewritten++;
+                    }
+
+                    continue;
+                }
+
+                if (inboundNode is not JsonArray tagArray)
+                {
+                    continue;
+                }
+
+                var ruleChanged = false;
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                var updated = new JsonArray();
+
+                foreach (var item in tagArray)
+                {
+                    if (item is not JsonValue value || !value.TryGetValue<string>(out var tag))
+                    {
+                        updated.Add(item?.DeepClone());
+                        continue;
+                    }
+
+                    var mapped = legacyTags.Contains(tag) ? newTag : tag;
+                    if (!string.Equals(mapped, tag, StringComparison.Ordinal))
+                    {
+                        ruleChanged = true;
+                    }
+
+                    if (seen.Add(mapped))
+                    {
+                        updated.Add(JsonValue.Create(mapped));
+                    }
+                }
+
+                if (ruleChanged)
+                {
+                    rule["inbound"] = updated;
+                    rewritten++;
+                }
+            }
+        }
+
+        return rewritten;
     }
 
     private static int RemoveTunInbounds(JsonArray inbounds)

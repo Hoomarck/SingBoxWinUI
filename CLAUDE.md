@@ -35,3 +35,26 @@
 3. **禁止覆盖用户精简版 README**：README 由用户在 GitHub 网页端维护。任何会话修改前必须先 `git pull --rebase origin main`，绝不回滚，绝不把旧的长篇技术版贴回去，绝不擅自删改用户已有段落。
 4. 后续修改 README 只允许在**保持用户现有精简结构**的前提下，补充必要的「双版本下载说明」与「WinGet 安装命令」；不得自行新增技术章节、展开特性矩阵、追加实现细节或重写措辞。
 5. 新增发行版本时，只更新下载表格 / 文件名 / 安装命令，其它段落保持不动。
+
+## 5. GitHub Release 说明格式（Release Notes 专用）
+
+**所有 Release 说明一律按此结构写**，基线样板：<https://github.com/Hoomarck/SingBoxWinUI/releases/tag/v1.1.1>（用户在网页端定稿的版本）。
+
+固定三段，顺序不变：
+
+1. `### 改进` —— 中文。每条一行 bullet，一句话讲完一个改动，不展开实现过程。
+2. `### What's new` —— 英文。与中文逐条对应，同样克制。
+3. `### 下载` —— 固定表格 + 收尾说明，只把 `{版本}` 换成本次版本号：
+
+```markdown
+| 版本 | 安装包（推荐） | 免安装便携包 |
+| :--- | :--- | :--- |
+| 带核心（首次使用） | `SingBoxWinUI-Setup-v{版本}-win-x64-with-core.exe` | `SingBoxWinUI-v{版本}-win-x64-with-core.7z` |
+| 不带核心（升级用） | `SingBoxWinUI-Setup-v{版本}-win-x64-no-core.exe` | `SingBoxWinUI-v{版本}-win-x64-no-core.7z` |
+
+每个文件均附带 `.sha256` 校验文件。`no-core` 版本覆盖安装不会动已有配置。
+```
+
+**写法红线**：Release 页面面向普通用户，克制标准同 §4 的 README。不要在说明里堆实现细节（探测源重排、超时参数、700ms 预检、`ConnectCallback`、文件路径、提交哈希等一律不写），也不要写成长篇分点报告——一个功能一条 bullet 即可。
+
+> 教训来源：v1.1.1 首版说明写了中英各 5 条实现细节，被用户在 Release 页删减为每段一句话并自行补上下载表格。以后直接按定稿格式写。
